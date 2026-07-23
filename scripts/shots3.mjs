@@ -1,0 +1,42 @@
+import { chromium } from 'playwright'
+
+const base = 'http://localhost:5174'
+const out = 'scripts/shots'
+const browser = await chromium.launch({ channel: 'msedge', headless: true }).catch(() => chromium.launch({ headless: true }))
+const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true })
+const errors = []
+page.on('pageerror', e => errors.push(String(e)))
+
+await page.goto(base, { waitUntil: 'networkidle' })
+await page.locator('.pbtn--ghost').first().click()
+await page.waitForTimeout(500)
+await page.locator('button:has-text("puzzle")').last().click()
+await page.waitForTimeout(500)
+
+await page.locator('.seg button:has-text("Cores")').click()
+await page.waitForTimeout(600)
+await page.screenshot({ path: `${out}/8-colors.png` })
+
+await page.locator('.seg button:has-text("Simetria")').click()
+await page.waitForTimeout(600)
+await page.screenshot({ path: `${out}/9-symmetry.png` })
+
+const svg = page.locator('svg.puzzle-panel')
+const box = await svg.boundingBox()
+if (box) {
+  const cell = box.width / (3 + 2 * 0.72)
+  const startX = box.x + cell * 0.72
+  const startY = box.y + box.height - cell * 0.72
+  await page.mouse.move(startX, startY)
+  await page.mouse.down()
+  await page.mouse.move(startX, startY - cell * 1.4, { steps: 20 })
+  await page.mouse.move(startX + cell * 0.6, startY - cell * 1.4, { steps: 10 })
+  await page.waitForTimeout(250)
+  await page.screenshot({ path: `${out}/10-symmetry-drawing.png` })
+  await page.mouse.up()
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: `${out}/11-after-release.png` })
+}
+
+console.log('errors:', errors.length ? errors : 'none')
+await browser.close()
