@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 // internal — absolute paths
 import type { Puzzle } from '@/puzzle/types'
 import { edgeKey, vertexXY, vertexAt, neighbors, mirrorVertex, mirrorEdgeKey } from '@/puzzle/types'
-import { validatePath } from '@/puzzle/validate'
+import { validatePath, findViolations, Violations } from '@/puzzle/validate'
 import { alarmSound } from '@/audio/alarmSound'
 import { tapHaptic } from '@/alarm/scheduler'
 
@@ -46,6 +46,7 @@ const COMMIT_THRESHOLD = 0.75
 const RETRACT_THRESHOLD = 0.5
 const MAX_STEPS_PER_MOVE = 6
 const FAIL_CLEAR_MS = 650
+const VIOLATION_CLEAR_MS = 1500
 const FAIL_LINE_COLOR = '#1a1a1a'
 const SQUARE_SIZE = 0.38
 const SQUARE_RADIUS = 0.11
@@ -83,6 +84,7 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
   const [path, setPath] = useState<number[]>([])
   const [tip, setTip] = useState<Point | null>(null)
   const [status, setStatus] = useState<Status>('idle')
+  const [violations, setViolations] = useState<Violations | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef(path)
   pathRef.current = path
@@ -108,6 +110,7 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
     setPath([])
     setTip(null)
     setStatus('idle')
+    setViolations(null)
   }, [puzzle, resetSignal])
 
   const broken = useMemo(() => new Set(puzzle.brokenEdges), [puzzle])
@@ -275,20 +278,30 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
       return
     }
     const head = current[current.length - 1]
-    if (allEnds.includes(head) && validatePath({ ...puzzle, ends: allEnds }, current)) {
+    const reachedEnd = allEnds.includes(head)
+    if (reachedEnd && validatePath({ ...puzzle, ends: allEnds }, current)) {
       setTip(toPoint(head))
       setStatus('solved')
       onSolved()
-    } else {
-      setStatus('fail')
-      alarmSound.playError()
-      onFail?.()
-      window.setTimeout(() => {
-        setPath([])
-        setTip(null)
-        setStatus('idle')
-      }, FAIL_CLEAR_MS)
+      return
     }
+    let clearDelay = FAIL_CLEAR_MS
+    if (reachedEnd) {
+      const found = findViolations(puzzle, current)
+      if (found.dots.length || found.mirrorDots.length || found.squareCells.length) {
+        setViolations(found)
+        clearDelay = VIOLATION_CLEAR_MS
+      }
+    }
+    setStatus('fail')
+    alarmSound.playError()
+    onFail?.()
+    window.setTimeout(() => {
+      setPath([])
+      setTip(null)
+      setStatus('idle')
+      setViolations(null)
+    }, clearDelay)
   }
 
   const pathPoints = path.map(toPoint)
@@ -362,6 +375,7 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
         return (
           <rect
             key={cell}
+            className={violations?.squareCells.includes(index) ? 'violation' : ''}
             x={cx - SQUARE_SIZE / 2}
             y={cy - SQUARE_SIZE / 2}
             width={SQUARE_SIZE}
@@ -387,7 +401,16 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
           cy = (pa.y + pb.y) / 2
         }
         const fill = puzzle.type === 'symhex' ? SYMHEX_MAIN_DOT : theme.dot
-        return <polygon key={dot} points={hexagonPoints(cx, cy, DOT_RADIUS)} fill={fill} stroke={puzzle.type === 'symhex' ? theme.grid : 'none'} strokeWidth={puzzle.type === 'symhex' ? 0.02 : 0} />
+        return (
+          <polygon
+            key={dot}
+            className={violations?.dots.includes(dot) ? 'violation' : ''}
+            points={hexagonPoints(cx, cy, DOT_RADIUS)}
+            fill={fill}
+            stroke={puzzle.type === 'symhex' ? theme.grid : 'none'}
+            strokeWidth={puzzle.type === 'symhex' ? 0.02 : 0}
+          />
+        )
       })}
 
       {puzzle.mirrorDots.map(dot => {
@@ -396,7 +419,16 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
         const pb = toPoint(b)
         const cx = (pa.x + pb.x) / 2
         const cy = (pa.y + pb.y) / 2
-        return <polygon key={`m-${dot}`} points={hexagonPoints(cx, cy, DOT_RADIUS)} fill={SYMHEX_MIRROR_DOT} stroke={theme.grid} strokeWidth={0.02} />
+        return (
+          <polygon
+            key={`m-${dot}`}
+            className={violations?.mirrorDots.includes(dot) ? 'violation' : ''}
+            points={hexagonPoints(cx, cy, DOT_RADIUS)}
+            fill={SYMHEX_MIRROR_DOT}
+            stroke={theme.grid}
+            strokeWidth={0.02}
+          />
+        )
       })}
 
       {path.length > 0 && (

@@ -378,6 +378,15 @@ body {
   100% { r: 0.3px; opacity: 0; }
 }
 
+.violation {
+  animation: violation-blink 0.24s linear 6;
+}
+
+@keyframes violation-blink {
+  0%, 100% { fill: #ff3b30; }
+  50% { fill: #ffffff; }
+}
+
 .escape-nub {
   animation: escape-glow 1s ease-in-out infinite;
 }
