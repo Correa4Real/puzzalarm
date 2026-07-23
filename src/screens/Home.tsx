@@ -36,6 +36,13 @@ const Home = () => {
     .filter((entry): entry is { alarm: Alarm; at: number } => entry.at !== null)
     .sort((a, b) => a.at - b.at)[0]
 
+  const puzzleLabel = (alarm: Alarm): string => {
+    const first = t[alarm.puzzleTypes[0] ?? 'maze']
+    const extra = alarm.puzzleTypes.length > 1 ? ` +${alarm.puzzleTypes.length - 1}` : ''
+    const count = alarm.puzzleCount > 1 ? ` (${alarm.puzzleCount})` : ''
+    return `${first}${extra}${count}`
+  }
+
   const daysLabel = (alarm: Alarm): string => {
     if (alarm.days.length === 0) return t.once
     if (alarm.days.length === 7) return t.everyDay
@@ -89,7 +96,7 @@ const Home = () => {
               <div className="time">{formatTime(alarm.hour, alarm.minute)}</div>
               <div className="days">
                 {daysLabel(alarm)}
-                {alarm.label ? ` · ${alarm.label}` : ''} · {t[alarm.puzzleType === 'random' ? 'randomType' : alarm.puzzleType]}
+                {alarm.label ? ` · ${alarm.label}` : ''} · {puzzleLabel(alarm)}
               </div>
             </div>
             <div onClick={e => e.stopPropagation()}>

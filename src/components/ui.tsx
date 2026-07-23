@@ -31,6 +31,12 @@ interface SegmentedProps<T extends string> {
   onChange: (value: T) => void
 }
 
+interface MultiSelectProps<T extends string> {
+  options: Array<{ value: T; label: string }>
+  values: T[]
+  onToggle: (value: T) => void
+}
+
 interface TimeWheelProps {
   count: number
   value: number
@@ -98,6 +104,23 @@ const Segmented = <T extends string>({ options, value, onChange }: SegmentedProp
   </div>
 )
 
+const MultiSelect = <T extends string>({ options, values, onToggle }: MultiSelectProps<T>) => (
+  <div className="seg">
+    {options.map(option => (
+      <button
+        key={option.value}
+        className={values.includes(option.value) ? 'on' : ''}
+        onClick={() => {
+          tapHaptic()
+          onToggle(option.value)
+        }}
+      >
+        {option.label}
+      </button>
+    ))}
+  </div>
+)
+
 const TimeWheel = ({ count, value, onChange, step = 1 }: TimeWheelProps) => {
   const ref = useRef<HTMLDivElement>(null)
   const cells = Array.from({ length: Math.ceil(count / step) }, (_, i) => i * step)
@@ -146,4 +169,4 @@ const GearIcon = () => (
 )
 
 // ===== EXPORT =====
-export { PressButton, WToggle, Segmented, TimeWheel, ScreenShell, GearIcon }
+export { PressButton, WToggle, Segmented, MultiSelect, TimeWheel, ScreenShell, GearIcon }

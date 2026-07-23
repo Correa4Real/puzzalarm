@@ -30,8 +30,10 @@ type Mode = 'main' | 'snooze'
 type SolvedMessage = null | 'stopped' | 'snoozed'
 
 // ===== UTILITIES =====
-const pickType = (type: PuzzleType | 'random'): PuzzleType =>
-  type === 'random' ? PUZZLE_TYPES[Math.floor(Math.random() * PUZZLE_TYPES.length)] : type
+const pickType = (types: PuzzleType[] | undefined): PuzzleType => {
+  const pool = types && types.length > 0 ? types : PUZZLE_TYPES
+  return pool[Math.floor(Math.random() * pool.length)]
+}
 
 const formatClock = (date: Date): string =>
   `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
@@ -51,13 +53,14 @@ const Ringing = ({ alarmId }: Props) => {
   const [resets, setResets] = useState(0)
   const [eased, setEased] = useState(false)
   const [solvedMsg, setSolvedMsg] = useState<SolvedMessage>(null)
+  const [solvedCount, setSolvedCount] = useState(0)
   const startedAt = useRef(Date.now())
   const rootRef = useRef<HTMLDivElement>(null)
 
-  const type = useMemo(() => pickType(alarm?.puzzleType ?? 'maze'), [alarmId])
   const difficulty: Difficulty = alarm?.difficulty ?? 'easy'
+  const targetCount = alarm?.puzzleCount ?? 1
 
-  const [mainPuzzle, setMainPuzzle] = useState(() => generatePuzzle(type, difficulty))
+  const [mainPuzzle, setMainPuzzle] = useState(() => generatePuzzle(pickType(alarm?.puzzleTypes), difficulty))
   const snoozePuzzle = useMemo(() => generatePuzzle('maze', 'easy'), [mode === 'snooze' ? 1 : 0])
 
   useEffect(() => {
@@ -89,6 +92,22 @@ const Ringing = ({ alarmId }: Props) => {
     const id = setTimeout(() => setResets(count => count), remaining + 100)
     return () => clearTimeout(id)
   }, [resets, eased])
+
+  const handleMainSolved = () => {
+    if (solvedCount + 1 >= targetCount) {
+      finishStop()
+      return
+    }
+    alarmSound.playSuccess()
+    if (rootRef.current) {
+      gsap.fromTo(rootRef.current, { filter: 'brightness(1)' }, { filter: 'brightness(1.4)', duration: 0.2, yoyo: true, repeat: 1 })
+    }
+    window.setTimeout(() => {
+      setSolvedCount(count => count + 1)
+      setEased(false)
+      setMainPuzzle(generatePuzzle(pickType(alarm?.puzzleTypes), difficulty))
+    }, 900)
+  }
 
   const finishStop = () => {
     alarmSound.stop()
@@ -170,6 +189,7 @@ const Ringing = ({ alarmId }: Props) => {
               <div className="ringing-time">{formatClock(new Date())}</div>
               <div style={{ color: 'rgba(255,255,255,0.92)', fontWeight: 700, fontSize: 15 }}>
                 {mode === 'main' ? t.solveToStop : t.solveToSnooze}
+                {mode === 'main' && targetCount > 1 ? ` · ${solvedCount + 1}/${targetCount}` : ''}
                 {alarm.label ? ` · ${alarm.label}` : ''}
               </div>
               {eased && mode === 'main' && (
@@ -184,7 +204,7 @@ const Ringing = ({ alarmId }: Props) => {
                 <PuzzlePanel
                   puzzle={activePuzzle}
                   resetSignal={resetSignal}
-                  onSolved={mode === 'main' ? finishStop : finishSnooze}
+                  onSolved={mode === 'main' ? handleMainSolved : finishSnooze}
                   onFail={() => setResets(count => count + 1)}
                 />
               </div>

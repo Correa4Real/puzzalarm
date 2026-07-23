@@ -85,6 +85,9 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
   const [tip, setTip] = useState<Point | null>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [violations, setViolations] = useState<Violations | null>(null)
+  const [origin, setOrigin] = useState<'main' | 'mirror'>('main')
+  const originRef = useRef(origin)
+  originRef.current = origin
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef(path)
   pathRef.current = path
@@ -111,6 +114,7 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
     setTip(null)
     setStatus('idle')
     setViolations(null)
+    setOrigin('main')
   }, [puzzle, resetSignal])
 
   const broken = useMemo(() => new Set(puzzle.brokenEdges), [puzzle])
@@ -189,13 +193,23 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
   const handleDown = (e: React.PointerEvent) => {
     if (disabled || statusRef.current === 'solved') return
     const pointer = svgPoint(e)
-    const distance = Math.hypot(pointer.x - startPos.x, pointer.y - startPos.y)
-    if (distance < START_TOUCH_RADIUS) {
-      setPath([puzzle.start])
-      setTip(startPos)
+    const near = (p: Point) => Math.hypot(pointer.x - p.x, pointer.y - p.y) < START_TOUCH_RADIUS
+
+    const begin = (from: 'main' | 'mirror', vertex: number, pos: Point) => {
+      setOrigin(from)
+      originRef.current = from
+      setPath([vertex])
+      pathRef.current = [vertex]
+      setTip(pos)
       setStatus('drawing')
       tapHaptic()
       ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    }
+
+    if (near(startPos)) {
+      begin('main', puzzle.start, startPos)
+    } else if (isSymmetry && near(mirrorPoint(startPos))) {
+      begin('mirror', mirrorV(puzzle.start), mirrorPoint(startPos))
     }
   }
 
@@ -279,7 +293,8 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
     }
     const head = current[current.length - 1]
     const reachedEnd = allEnds.includes(head)
-    if (reachedEnd && validatePath({ ...puzzle, ends: allEnds }, current)) {
+    const effectivePath = originRef.current === 'mirror' ? current.map(mirrorV) : current
+    if (reachedEnd && validatePath({ ...puzzle, ends: allEnds }, effectivePath)) {
       setTip(toPoint(head))
       setStatus('solved')
       onSolved()
@@ -287,7 +302,7 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
     }
     let clearDelay = FAIL_CLEAR_MS
     if (reachedEnd) {
-      const found = findViolations(puzzle, current)
+      const found = findViolations(puzzle, effectivePath)
       if (found.dots.length || found.mirrorDots.length || found.squareCells.length) {
         setViolations(found)
         clearDelay = VIOLATION_CLEAR_MS
@@ -307,8 +322,11 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
   const pathPoints = path.map(toPoint)
   const linePoints = tip && status === 'drawing' ? [...pathPoints, tip] : pathPoints
   const solvedHead = status === 'solved' ? nubFor(path[path.length - 1]) : null
-  const lineColor = status === 'fail' ? FAIL_LINE_COLOR : status === 'solved' ? theme.lineGlow : theme.line
-  const mirrorColor = status === 'fail' ? FAIL_LINE_COLOR : theme.mirrorLine ?? theme.line
+  const originStartPos = origin === 'mirror' ? mirrorPoint(startPos) : startPos
+  const playerBaseColor = origin === 'mirror' ? theme.mirrorLine ?? theme.line : theme.line
+  const autoBaseColor = origin === 'mirror' ? theme.line : theme.mirrorLine ?? theme.line
+  const lineColor = status === 'fail' ? FAIL_LINE_COLOR : status === 'solved' ? theme.lineGlow : playerBaseColor
+  const mirrorColor = status === 'fail' ? FAIL_LINE_COLOR : autoBaseColor
   const mirrorPoints = isSymmetry ? linePoints.map(mirrorPoint) : []
   const mirrorTip = isSymmetry && tip ? mirrorPoint(tip) : null
   const squarePalette = SquarePalettes[puzzle.type] ?? SquarePalettes.squares
@@ -444,12 +462,12 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
             />
           )}
           {isSymmetry && (
-            <circle cx={mirrorPoint(startPos).x} cy={mirrorPoint(startPos).y} r={START_RADIUS} fill={mirrorColor} />
+            <circle cx={mirrorPoint(originStartPos).x} cy={mirrorPoint(originStartPos).y} r={START_RADIUS} fill={mirrorColor} />
           )}
           {isSymmetry && mirrorTip && status !== 'solved' && (
             <circle cx={mirrorTip.x} cy={mirrorTip.y} r={TIP_RADIUS} fill={mirrorColor} />
           )}
-          <circle cx={startPos.x} cy={startPos.y} r={START_RADIUS} fill={lineColor} />
+          <circle cx={originStartPos.x} cy={originStartPos.y} r={START_RADIUS} fill={lineColor} />
           {linePoints.length > 1 && (
             <path
               d={pathD(linePoints)}

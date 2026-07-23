@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 
 // internal — absolute paths
 import type { Alarm, SoundId, CustomSound } from '@/types'
-import { newAlarm } from '@/types'
+import type { PuzzleType } from '@/puzzle/types'
+import { newAlarm, MAX_PUZZLE_COUNT } from '@/types'
 import { useStore } from '@/store'
 import { loadJSON, saveJSON } from '@/storage'
-import { PressButton, WToggle, Segmented, TimeWheel, ScreenShell } from '@/components/ui'
+import { PressButton, WToggle, Segmented, MultiSelect, TimeWheel, ScreenShell } from '@/components/ui'
 import { alarmSound } from '@/audio/alarmSound'
 import { ringtonesAvailable, listRingtones, Ringtone } from '@/audio/ringtones'
 import { ensureNotificationPermission, tapHaptic } from '@/alarm/scheduler'
@@ -59,6 +60,15 @@ const EditAlarm = ({ alarmId }: Props) => {
   const toggleDay = (day: number) => {
     tapHaptic()
     patch({ days: draft.days.includes(day) ? draft.days.filter(d => d !== day) : [...draft.days, day].sort() })
+  }
+
+  const togglePuzzleType = (type: PuzzleType) => {
+    if (draft.puzzleTypes.includes(type)) {
+      if (draft.puzzleTypes.length === 1) return
+      patch({ puzzleTypes: draft.puzzleTypes.filter(item => item !== type) })
+    } else {
+      patch({ puzzleTypes: [...draft.puzzleTypes, type] })
+    }
   }
 
   const save = async () => {
@@ -123,23 +133,22 @@ const EditAlarm = ({ alarmId }: Props) => {
 
         <div className="card card--dark stack">
           <span className="label-sm">{t.puzzle}</span>
-          <Segmented
-            value={draft.puzzleType}
-            onChange={puzzleType => patch({ puzzleType })}
+          <MultiSelect
+            values={draft.puzzleTypes}
+            onToggle={togglePuzzleType}
             options={[
               { value: 'maze', label: t.maze },
               { value: 'dots', label: t.dots },
               { value: 'squares', label: t.squares },
             ]}
           />
-          <Segmented
-            value={draft.puzzleType}
-            onChange={puzzleType => patch({ puzzleType })}
+          <MultiSelect
+            values={draft.puzzleTypes}
+            onToggle={togglePuzzleType}
             options={[
               { value: 'colors', label: t.colors },
               { value: 'symmetry', label: t.symmetry },
               { value: 'symhex', label: t.symhex },
-              { value: 'random', label: t.randomType },
             ]}
           />
           <span className="label-sm" style={{ marginTop: 6 }}>{t.difficulty}</span>
@@ -151,6 +160,15 @@ const EditAlarm = ({ alarmId }: Props) => {
               { value: 'medium', label: t.medium },
               { value: 'hard', label: t.hard },
             ]}
+          />
+          <span className="label-sm" style={{ marginTop: 6 }}>{t.puzzleCount}</span>
+          <Segmented
+            value={String(draft.puzzleCount)}
+            onChange={value => patch({ puzzleCount: Number(value) })}
+            options={Array.from({ length: MAX_PUZZLE_COUNT }, (_, i) => ({
+              value: String(i + 1),
+              label: String(i + 1),
+            }))}
           />
         </div>
 

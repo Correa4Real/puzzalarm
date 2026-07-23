@@ -11,9 +11,9 @@ interface SizeSpec {
 
 const SizeTable: Record<PuzzleType, Record<Difficulty, SizeSpec>> = {
   maze: {
-    easy: { cols: 3, rows: 3, minLen: 6 },
-    medium: { cols: 4, rows: 4, minLen: 10 },
-    hard: { cols: 5, rows: 5, minLen: 16 },
+    easy: { cols: 4, rows: 4, minLen: 9 },
+    medium: { cols: 5, rows: 5, minLen: 14 },
+    hard: { cols: 6, rows: 6, minLen: 20 },
   },
   dots: {
     easy: { cols: 3, rows: 3, minLen: 7 },
@@ -31,27 +31,30 @@ const SizeTable: Record<PuzzleType, Record<Difficulty, SizeSpec>> = {
     hard: { cols: 5, rows: 5, minLen: 14 },
   },
   symmetry: {
-    easy: { cols: 3, rows: 3, minLen: 6 },
-    medium: { cols: 5, rows: 4, minLen: 10 },
-    hard: { cols: 5, rows: 5, minLen: 14 },
+    easy: { cols: 5, rows: 3, minLen: 8 },
+    medium: { cols: 5, rows: 4, minLen: 12 },
+    hard: { cols: 5, rows: 5, minLen: 15 },
   },
   symhex: {
-    easy: { cols: 3, rows: 3, minLen: 6 },
-    medium: { cols: 5, rows: 4, minLen: 10 },
+    easy: { cols: 5, rows: 3, minLen: 8 },
+    medium: { cols: 5, rows: 4, minLen: 11 },
     hard: { cols: 5, rows: 5, minLen: 14 },
   },
 }
 
-const BrokenEdgeFraction: Record<Difficulty, number> = { easy: 0.35, medium: 0.42, hard: 0.48 }
-const SymmetryBrokenFraction: Record<Difficulty, number> = { easy: 0.2, medium: 0.28, hard: 0.34 }
+const BrokenEdgeFraction: Record<Difficulty, number> = { easy: 0.45, medium: 0.5, hard: 0.55 }
+const SymmetryBrokenFraction: Record<Difficulty, number> = { easy: 0.35, medium: 0.45, hard: 0.5 }
 const DotCount: Record<Difficulty, number> = { easy: 3, medium: 5, hard: 7 }
 const SymhexDotCount: Record<Difficulty, number> = { easy: 2, medium: 3, hard: 4 }
 const SquareDensity: Record<Difficulty, number> = { easy: 0.9, medium: 0.7, hard: 0.6 }
 const ColorsMinRegions: Record<Difficulty, number> = { easy: 2, medium: 3, hard: 3 }
 const ColorsPaletteSize: Record<Difficulty, number> = { easy: 3, medium: 3, hard: 4 }
 const DOTS_BROKEN_FRACTION = 0.15
-const SYMHEX_BROKEN_FRACTION = 0.12
-const MAX_GENERATION_ATTEMPTS = 200
+const SYMHEX_BROKEN_FRACTION = 0.3
+const MAX_GENERATION_ATTEMPTS = 800
+const MIN_SOLVE_FRACTION = 0.7
+const SYMMETRY_MIN_SOLVE_FRACTION = 0.6
+const MIN_SOLVE_FLOOR = 4
 
 // ===== UTILITIES =====
 const randomInt = (n: number): number => Math.floor(Math.random() * n)
@@ -194,6 +197,34 @@ const assignRegionColors = (regions: number[][], paletteSize: number, density: n
   return used.size >= 2 ? squares : null
 }
 
+const shortestSolveDistance = (puzzle: Puzzle): number => {
+  const broken = new Set(puzzle.brokenEdges)
+  const isMirrorType = puzzle.type === 'symmetry' || puzzle.type === 'symhex'
+  const targets = new Set(puzzle.ends)
+  if (isMirrorType) {
+    puzzle.ends.forEach(end => targets.add(mirrorVertex(end, puzzle.cols, puzzle.rows, puzzle.symmetryKind)))
+  }
+  const edgeUsable = (a: number, b: number): boolean => {
+    const key = edgeKey(a, b)
+    if (broken.has(key)) return false
+    if (isMirrorType && broken.has(mirrorEdgeKey(key, puzzle.cols, puzzle.rows, puzzle.symmetryKind))) return false
+    return true
+  }
+  const dist = new Map<number, number>([[puzzle.start, 0]])
+  const queue = [puzzle.start]
+  while (queue.length) {
+    const v = queue.shift()!
+    const d = dist.get(v)!
+    if (targets.has(v)) return d
+    for (const next of neighbors(v, puzzle.cols, puzzle.rows)) {
+      if (dist.has(next) || !edgeUsable(v, next)) continue
+      dist.set(next, d + 1)
+      queue.push(next)
+    }
+  }
+  return Infinity
+}
+
 const protectedEndpoints = (puzzle: Pick<Puzzle, 'type' | 'cols' | 'rows' | 'start' | 'ends' | 'symmetryKind'>): Set<number> => {
   const vertices = new Set<number>([puzzle.start, ...puzzle.ends])
   if (puzzle.type === 'symmetry' || puzzle.type === 'symhex') {
@@ -226,17 +257,8 @@ const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
         edge => !onPath.has(edge) && !onMirror.has(edge) && !touchesVertices(edge, keepClear),
       ),
     )
-    const broken = new Set<string>()
     const fraction = type === 'symmetry' ? SymmetryBrokenFraction[diff] : SYMHEX_BROKEN_FRACTION
-    const target = Math.floor(removable.length * fraction)
-    for (const edge of removable) {
-      if (broken.size >= target) break
-      const mirrored = mirrorEdgeKey(edge, cols, rows, kind)
-      if (onPath.has(mirrored) || onMirror.has(mirrored) || touchesVertices(mirrored, keepClear)) continue
-      broken.add(edge)
-      broken.add(mirrored)
-    }
-    base.brokenEdges = [...broken]
+    base.brokenEdges = removable.slice(0, Math.floor(removable.length * fraction))
 
     if (type === 'symhex') {
       const count = SymhexDotCount[diff]
@@ -245,6 +267,9 @@ const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
       if (mainEdges.length < count || mirrorEdges.length < count) return null
       base.dots = mainEdges.slice(0, count).map(edge => `e:${edge}`)
       base.mirrorDots = mirrorEdges.slice(0, count).map(edge => `e:${edge}`)
+    }
+    if (type === 'symmetry' && shortestSolveDistance(base) < Math.max(MIN_SOLVE_FLOOR, Math.round(minLen * SYMMETRY_MIN_SOLVE_FRACTION))) {
+      return null
     }
     return base
   }
@@ -264,6 +289,9 @@ const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
       allEdges(cols, rows).filter(edge => !onPath.has(edge) && !touchesVertices(edge, keepClear)),
     )
     base.brokenEdges = removable.slice(0, Math.floor(removable.length * BrokenEdgeFraction[diff]))
+    if (shortestSolveDistance(base) < Math.max(MIN_SOLVE_FLOOR, Math.round(minLen * MIN_SOLVE_FRACTION))) {
+      return null
+    }
     return base
   }
 

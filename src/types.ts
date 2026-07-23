@@ -1,6 +1,10 @@
 // internal — absolute paths
 import type { PuzzleType, Difficulty } from '@/puzzle/types'
 
+// ===== CONFIGURATIONS =====
+const ALL_PUZZLE_TYPES: PuzzleType[] = ['maze', 'dots', 'squares', 'colors', 'symmetry', 'symhex']
+const MAX_PUZZLE_COUNT = 5
+
 // ===== TYPES =====
 export type SoundId = 'panel' | 'bells' | 'pulse' | 'choir' | 'custom' | 'ringtone'
 
@@ -16,7 +20,8 @@ export interface Alarm {
   days: number[]
   enabled: boolean
   label: string
-  puzzleType: PuzzleType | 'random'
+  puzzleTypes: PuzzleType[]
+  puzzleCount: number
   difficulty: Difficulty
   vibrate: boolean
   volumeRamp: boolean
@@ -66,7 +71,8 @@ const newAlarm = (): Alarm => ({
   days: [...DefaultAlarmValues.days],
   enabled: true,
   label: '',
-  puzzleType: 'maze',
+  puzzleTypes: ['maze'],
+  puzzleCount: 1,
   difficulty: 'easy',
   vibrate: true,
   volumeRamp: true,
@@ -74,5 +80,19 @@ const newAlarm = (): Alarm => ({
   snoozeMinutes: DefaultAlarmValues.snoozeMinutes,
 })
 
+const normalizeAlarm = (raw: Alarm & { puzzleType?: PuzzleType | 'random' }): Alarm => {
+  const puzzleTypes =
+    Array.isArray(raw.puzzleTypes) && raw.puzzleTypes.length > 0
+      ? raw.puzzleTypes
+      : raw.puzzleType === 'random'
+        ? [...ALL_PUZZLE_TYPES]
+        : raw.puzzleType
+          ? [raw.puzzleType]
+          : ['maze' as PuzzleType]
+  const puzzleCount =
+    typeof raw.puzzleCount === 'number' ? Math.min(MAX_PUZZLE_COUNT, Math.max(1, Math.round(raw.puzzleCount))) : 1
+  return { ...raw, puzzleTypes, puzzleCount }
+}
+
 // ===== EXPORT =====
-export { defaultSettings, newAlarm }
+export { defaultSettings, newAlarm, normalizeAlarm, ALL_PUZZLE_TYPES, MAX_PUZZLE_COUNT }

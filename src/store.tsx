@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode, useC
 
 // internal — absolute paths
 import type { Alarm, Settings, Screen } from '@/types'
-import { defaultSettings } from '@/types'
+import { defaultSettings, normalizeAlarm } from '@/types'
 import { loadJSON, saveJSON } from '@/storage'
 import type { Dict } from '@/i18n'
 import { getDict } from '@/i18n'
@@ -50,7 +50,7 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
         loadJSON<Alarm[]>(StorageKeys.alarms),
         loadJSON<Settings>(StorageKeys.settings),
       ])
-      if (storedAlarms) setAlarms(storedAlarms)
+      if (storedAlarms) setAlarms(storedAlarms.map(normalizeAlarm))
       if (storedSettings) setSettingsState({ ...defaultSettings, ...storedSettings })
       setReady(true)
     }
