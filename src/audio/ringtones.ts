@@ -12,6 +12,8 @@ interface RingtonesPlugin {
   play(options: { uri: string; volume?: number }): Promise<void>
   setVolume(options: { volume: number }): Promise<void>
   stop(): Promise<void>
+  boostVolumes(): Promise<void>
+  restoreVolumes(): Promise<void>
 }
 
 // ===== CONFIGURATIONS =====
@@ -57,5 +59,31 @@ const stopRingtone = async (): Promise<void> => {
   }
 }
 
+const boostSystemVolumes = async (): Promise<void> => {
+  if (!ringtonesAvailable()) return
+  try {
+    await plugin.boostVolumes()
+  } catch {
+    return
+  }
+}
+
+const restoreSystemVolumes = async (): Promise<void> => {
+  if (!ringtonesAvailable()) return
+  try {
+    await plugin.restoreVolumes()
+  } catch {
+    return
+  }
+}
+
 // ===== EXPORT =====
-export { ringtonesAvailable, listRingtones, playRingtone, setRingtoneVolume, stopRingtone }
+export {
+  ringtonesAvailable,
+  listRingtones,
+  playRingtone,
+  setRingtoneVolume,
+  stopRingtone,
+  boostSystemVolumes,
+  restoreSystemVolumes,
+}

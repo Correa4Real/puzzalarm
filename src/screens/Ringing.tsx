@@ -68,6 +68,7 @@ const Ringing = ({ alarmId }: Props) => {
       rampSeconds: settings.rampSeconds,
       maxVolume: settings.maxVolume,
       ringtoneUri: alarm.ringtoneUri,
+      boostSystem: true,
     })
     if (alarm.vibrate) startVibration()
     return () => {

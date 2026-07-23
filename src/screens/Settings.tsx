@@ -1,6 +1,7 @@
 // internal — absolute paths
 import { useStore } from '@/store'
 import { PressButton, Segmented, ScreenShell } from '@/components/ui'
+import { nativeAlarmsAvailable, openFullScreenIntentSettings } from '@/alarm/nativeAlarms'
 
 // ===== CONFIGURATIONS =====
 const SNOOZE_MIN = 1
@@ -68,6 +69,16 @@ const Settings = () => {
         <PressButton variant="dark" onClick={() => setScreen({ name: 'test' })} style={{ fontSize: 16 }}>
           {t.testPuzzles}
         </PressButton>
+        {nativeAlarmsAvailable() && (
+          <>
+            <PressButton variant="dark" onClick={() => openFullScreenIntentSettings()} style={{ fontSize: 16 }}>
+              {t.fullScreenPermission}
+            </PressButton>
+            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 600 }}>
+              {t.fullScreenPermissionHint}
+            </div>
+          </>
+        )}
 
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 600, marginTop: 8 }}>
           {t.alarmPermission}

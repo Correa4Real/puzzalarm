@@ -10,6 +10,7 @@ import { PressButton, WToggle, Segmented, TimeWheel, ScreenShell } from '@/compo
 import { alarmSound } from '@/audio/alarmSound'
 import { ringtonesAvailable, listRingtones, Ringtone } from '@/audio/ringtones'
 import { ensureNotificationPermission, tapHaptic } from '@/alarm/scheduler'
+import { canUseFullScreenIntent, openFullScreenIntentSettings } from '@/alarm/nativeAlarms'
 
 // ===== CONFIGURATIONS =====
 const LABEL_MAX_LENGTH = 30
@@ -62,6 +63,8 @@ const EditAlarm = ({ alarmId }: Props) => {
 
   const save = async () => {
     await ensureNotificationPermission()
+    const fullScreenGranted = await canUseFullScreenIntent()
+    if (!fullScreenGranted) await openFullScreenIntentSettings()
     upsertAlarm({ ...draft, oneShotAt: undefined, enabled: true })
     setScreen({ name: 'home' })
   }

@@ -3,7 +3,7 @@ import type { SoundId, CustomSound } from '@/types'
 import { loadJSON } from '@/storage'
 
 // internal — relative
-import { playRingtone, setRingtoneVolume, stopRingtone } from './ringtones'
+import { playRingtone, setRingtoneVolume, stopRingtone, boostSystemVolumes, restoreSystemVolumes } from './ringtones'
 
 // ===== CONFIGURATIONS =====
 const CUSTOM_SOUND_KEY = 'customSound'
@@ -19,6 +19,7 @@ interface SoundOptions {
   rampSeconds: number
   maxVolume: number
   ringtoneUri?: string
+  boostSystem?: boolean
 }
 
 // ===== SERVICE =====
@@ -30,10 +31,15 @@ class AlarmSoundEngine {
   private audioElement: HTMLAudioElement | null = null
   private ringtonePlaying = false
   private running = false
+  private boosted = false
   private session = 0
 
   start(sound: SoundId, opts: SoundOptions) {
     this.stop()
+    if (opts.boostSystem) {
+      this.boosted = true
+      boostSystemVolumes()
+    }
     if (sound === 'custom') {
       this.startCustom(opts, this.session)
       return
@@ -222,6 +228,10 @@ class AlarmSoundEngine {
     if (this.ringtonePlaying) {
       this.ringtonePlaying = false
       stopRingtone()
+    }
+    if (this.boosted) {
+      this.boosted = false
+      restoreSystemVolumes()
     }
     if (this.ctx) {
       const ctx = this.ctx

@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.os.Build;
+import android.os.PowerManager;
 
 import androidx.core.app.NotificationCompat;
 
@@ -32,6 +33,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         String body = intent.getStringExtra(EXTRA_BODY);
         if (alarmId == null) return;
 
+        wakeScreen(context);
         createChannel(context);
 
         Intent launch = new Intent(context, MainActivity.class);
@@ -56,6 +58,26 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         try {
             context.getSystemService(NotificationManager.class).notify(notifId, notification);
+        } catch (Exception ignored) {
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            try {
+                context.startActivity(launch);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void wakeScreen(Context context) {
+        try {
+            PowerManager power = context.getSystemService(PowerManager.class);
+            PowerManager.WakeLock lock = power.newWakeLock(
+                PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
+                "puzzalarm:alarm"
+            );
+            lock.acquire(10000);
         } catch (Exception ignored) {
         }
     }

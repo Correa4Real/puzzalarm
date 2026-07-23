@@ -7,6 +7,9 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -53,6 +56,34 @@ public class AlarmSchedulerPlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("alarmId", MainActivity.consumePendingAlarmId());
         call.resolve(result);
+    }
+
+    @PluginMethod
+    public void canUseFullScreenIntent(PluginCall call) {
+        boolean granted = true;
+        if (Build.VERSION.SDK_INT >= 34) {
+            try {
+                granted = getContext().getSystemService(NotificationManager.class).canUseFullScreenIntent();
+            } catch (Exception ignored) {
+            }
+        }
+        JSObject result = new JSObject();
+        result.put("granted", granted);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void openFullScreenIntentSettings(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= 34) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT);
+                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(intent);
+            } catch (Exception ignored) {
+            }
+        }
+        call.resolve();
     }
 
     @PluginMethod

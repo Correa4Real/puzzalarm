@@ -10,6 +10,7 @@ import { nextOccurrence, formatCountdown } from '@/alarm/scheduler'
 
 // ===== CONFIGURATIONS =====
 const CLOCK_TICK_MS = 1000
+const PRESS_ANIMATION_MS = 140
 const WEEKDAY_SET = [1, 2, 3, 4, 5]
 const WEEKEND_SET = [0, 6]
 
@@ -82,7 +83,7 @@ const Home = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.06 * index, type: 'spring', stiffness: 300, damping: 26 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => setScreen({ name: 'edit', alarmId: alarm.id })}
+            onClick={() => setTimeout(() => setScreen({ name: 'edit', alarmId: alarm.id }), PRESS_ANIMATION_MS)}
           >
             <div className="meta">
               <div className="time">{formatTime(alarm.hour, alarm.minute)}</div>

@@ -1,8 +1,10 @@
 package com.tistars.puzzalarm;
 
 // external libs
+import android.content.Context;
 import android.database.Cursor;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -19,6 +21,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class RingtonesPlugin extends Plugin {
 
     private MediaPlayer player;
+    private int savedMusicVolume = -1;
+    private int savedAlarmVolume = -1;
 
     // ===== SERVICE =====
     @PluginMethod
@@ -84,6 +88,32 @@ public class RingtonesPlugin extends Plugin {
     @PluginMethod
     public void stop(PluginCall call) {
         stopPlayer();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void boostVolumes(PluginCall call) {
+        try {
+            AudioManager audio = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (savedMusicVolume < 0) savedMusicVolume = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+            if (savedAlarmVolume < 0) savedAlarmVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM);
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
+            audio.setStreamVolume(AudioManager.STREAM_ALARM, audio.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0);
+        } catch (Exception ignored) {
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void restoreVolumes(PluginCall call) {
+        try {
+            AudioManager audio = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (savedMusicVolume >= 0) audio.setStreamVolume(AudioManager.STREAM_MUSIC, savedMusicVolume, 0);
+            if (savedAlarmVolume >= 0) audio.setStreamVolume(AudioManager.STREAM_ALARM, savedAlarmVolume, 0);
+        } catch (Exception ignored) {
+        }
+        savedMusicVolume = -1;
+        savedAlarmVolume = -1;
         call.resolve();
     }
 

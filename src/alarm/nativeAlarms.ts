@@ -14,6 +14,8 @@ interface AlarmSchedulerPlugin {
   schedule(options: { alarms: NativeAlarmEntry[] }): Promise<void>
   consumeLaunchAlarmId(): Promise<{ alarmId: string | null }>
   dismissNotifications(): Promise<void>
+  canUseFullScreenIntent(): Promise<{ granted: boolean }>
+  openFullScreenIntentSettings(): Promise<void>
 }
 
 // ===== CONFIGURATIONS =====
@@ -50,5 +52,31 @@ const dismissAlarmNotifications = async (): Promise<void> => {
   }
 }
 
+const canUseFullScreenIntent = async (): Promise<boolean> => {
+  if (!nativeAlarmsAvailable()) return true
+  try {
+    const { granted } = await plugin.canUseFullScreenIntent()
+    return granted
+  } catch {
+    return true
+  }
+}
+
+const openFullScreenIntentSettings = async (): Promise<void> => {
+  if (!nativeAlarmsAvailable()) return
+  try {
+    await plugin.openFullScreenIntentSettings()
+  } catch {
+    return
+  }
+}
+
 // ===== EXPORT =====
-export { nativeAlarmsAvailable, scheduleNativeAlarms, consumeLaunchAlarmId, dismissAlarmNotifications }
+export {
+  nativeAlarmsAvailable,
+  scheduleNativeAlarms,
+  consumeLaunchAlarmId,
+  dismissAlarmNotifications,
+  canUseFullScreenIntent,
+  openFullScreenIntentSettings,
+}
