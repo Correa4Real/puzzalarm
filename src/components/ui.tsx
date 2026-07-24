@@ -168,5 +168,19 @@ const GearIcon = () => (
   </svg>
 )
 
+const FolderIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </svg>
+)
+
+const FolderPlusIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <path d="M12 11v5" />
+    <path d="M9.5 13.5h5" />
+  </svg>
+)
+
 // ===== EXPORT =====
-export { PressButton, WToggle, Segmented, MultiSelect, TimeWheel, ScreenShell, GearIcon }
+export { PressButton, WToggle, Segmented, MultiSelect, TimeWheel, ScreenShell, GearIcon, FolderIcon, FolderPlusIcon }

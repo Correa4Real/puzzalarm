@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 // internal — absolute paths
-import type { Alarm, SoundId, CustomSound } from '@/types'
+import type { Alarm, Screen, SoundId, CustomSound } from '@/types'
 import type { PuzzleType } from '@/puzzle/types'
 import { newAlarm, MAX_PUZZLE_COUNT } from '@/types'
 import { useStore } from '@/store'
@@ -19,13 +19,15 @@ const CUSTOM_SOUND_KEY = 'customSound'
 
 interface Props {
   alarmId?: string
+  folderId?: string
 }
 
 // ===== MAIN COMPONENT =====
-const EditAlarm = ({ alarmId }: Props) => {
+const EditAlarm = ({ alarmId, folderId }: Props) => {
   const { alarms, t, setScreen, upsertAlarm, deleteAlarm } = useStore()
   const existing = alarms.find(alarm => alarm.id === alarmId)
-  const [draft, setDraft] = useState<Alarm>(existing ? { ...existing } : newAlarm())
+  const [draft, setDraft] = useState<Alarm>(existing ? { ...existing } : { ...newAlarm(), folderId })
+  const returnScreen: Screen = draft.folderId ? { name: 'folder', folderId: draft.folderId } : { name: 'home' }
   const [customSoundName, setCustomSoundName] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [ringtones, setRingtones] = useState<Ringtone[] | null>(null)
@@ -76,13 +78,13 @@ const EditAlarm = ({ alarmId }: Props) => {
     const fullScreenGranted = await canUseFullScreenIntent()
     if (!fullScreenGranted) await openFullScreenIntentSettings()
     upsertAlarm({ ...draft, oneShotAt: undefined, enabled: true })
-    setScreen({ name: 'home' })
+    setScreen(returnScreen)
   }
 
   return (
     <ScreenShell color="green">
       <div className="row" style={{ marginBottom: 10 }}>
-        <PressButton variant="ghost" onClick={() => setScreen({ name: 'home' })} style={{ padding: '10px 14px' }}>
+        <PressButton variant="ghost" onClick={() => setScreen(returnScreen)} style={{ padding: '10px 14px' }}>
           {'←'}
         </PressButton>
         <span className="screen-title">{existing ? t.editAlarm : t.newAlarm}</span>
@@ -281,7 +283,7 @@ const EditAlarm = ({ alarmId }: Props) => {
                 variant="dark"
                 onClick={() => {
                   deleteAlarm(existing.id)
-                  setScreen({ name: 'home' })
+                  setScreen(returnScreen)
                 }}
               >
                 {t.deleteConfirmYes}

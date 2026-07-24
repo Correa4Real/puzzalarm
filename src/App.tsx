@@ -10,6 +10,7 @@ import { useStore } from '@/store'
 import { consumeLaunchAlarmId } from '@/alarm/nativeAlarms'
 import Home from '@/screens/Home'
 import EditAlarm from '@/screens/EditAlarm'
+import FolderScreen from '@/screens/Folder'
 import Ringing from '@/screens/Ringing'
 import Settings from '@/screens/Settings'
 import Tutorial from '@/screens/Tutorial'
@@ -19,10 +20,11 @@ import PuzzleTest from '@/screens/PuzzleTest'
 const ScreenDepth: Record<Screen['name'], number> = {
   home: 0,
   settings: 1,
-  edit: 1,
-  tutorial: 2,
+  folder: 1,
+  edit: 2,
+  tutorial: 3,
   test: 2,
-  ringing: 2,
+  ringing: 3,
 }
 
 const slideTransition = { type: 'spring', stiffness: 300, damping: 34 } as const
@@ -45,6 +47,7 @@ const slideVariants = {
 // ===== UTILITIES =====
 const screenKey = (screen: Screen): string => {
   if (screen.name === 'edit') return `edit-${screen.alarmId ?? 'new'}`
+  if (screen.name === 'folder') return `folder-${screen.folderId}`
   if (screen.name === 'ringing') return `ring-${screen.alarmId}`
   return screen.name
 }
@@ -54,7 +57,9 @@ const renderScreen = (screen: Screen) => {
     case 'home':
       return <Home />
     case 'edit':
-      return <EditAlarm alarmId={screen.alarmId} />
+      return <EditAlarm alarmId={screen.alarmId} folderId={screen.folderId} />
+    case 'folder':
+      return <FolderScreen folderId={screen.folderId} />
     case 'settings':
       return <Settings />
     case 'tutorial':
@@ -88,6 +93,9 @@ const App = () => {
           CapacitorApp.exitApp()
           break
         case 'edit':
+          setScreen(current.folderId ? { name: 'folder', folderId: current.folderId } : { name: 'home' })
+          break
+        case 'folder':
         case 'settings':
           setScreen({ name: 'home' })
           break

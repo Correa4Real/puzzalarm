@@ -3,24 +3,24 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 
 // internal — absolute paths
-import type { Alarm } from '@/types'
+import type { Alarm, Folder } from '@/types'
+import { newFolder } from '@/types'
 import { useStore } from '@/store'
-import { PressButton, WToggle, ScreenShell, GearIcon } from '@/components/ui'
+import { PressButton, WToggle, ScreenShell, GearIcon, FolderIcon, FolderPlusIcon } from '@/components/ui'
+import { AlarmCard, formatTime } from '@/components/AlarmCard'
 import { nextOccurrence, formatCountdown } from '@/alarm/scheduler'
 
 // ===== CONFIGURATIONS =====
 const CLOCK_TICK_MS = 1000
-const PRESS_ANIMATION_MS = 140
-const WEEKDAY_SET = [1, 2, 3, 4, 5]
-const WEEKEND_SET = [0, 6]
 
 // ===== UTILITIES =====
-const formatTime = (hour: number, minute: number): string =>
-  `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+const alarmMinutes = (alarm: Alarm): number => alarm.hour * 60 + alarm.minute
+
+const byTime = (a: Alarm, b: Alarm): number => alarmMinutes(a) - alarmMinutes(b)
 
 // ===== MAIN COMPONENT =====
 const Home = () => {
-  const { alarms, t, setScreen, toggleAlarm } = useStore()
+  const { alarms, folders, t, setScreen, toggleAlarm, upsertFolder, setFolderEnabled } = useStore()
   const [now, setNow] = useState(Date.now())
 
   useEffect(() => {
@@ -29,27 +29,31 @@ const Home = () => {
   }, [])
 
   const clock = new Date(now)
-  const sorted = [...alarms].sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute))
+  const folderIds = new Set(folders.map(folder => folder.id))
+  const looseAlarms = [...alarms].filter(alarm => !alarm.folderId || !folderIds.has(alarm.folderId)).sort(byTime)
 
   const nextAlarm = alarms
     .map(alarm => ({ alarm, at: nextOccurrence(alarm, now) }))
     .filter((entry): entry is { alarm: Alarm; at: number } => entry.at !== null)
     .sort((a, b) => a.at - b.at)[0]
 
-  const puzzleLabel = (alarm: Alarm): string => {
-    const first = t[alarm.puzzleTypes[0] ?? 'maze']
-    const extra = alarm.puzzleTypes.length > 1 ? ` +${alarm.puzzleTypes.length - 1}` : ''
-    const count = alarm.puzzleCount > 1 ? ` (${alarm.puzzleCount})` : ''
-    return `${first}${extra}${count}`
+  const folderAlarms = (folder: Folder): Alarm[] => alarms.filter(alarm => alarm.folderId === folder.id).sort(byTime)
+
+  const folderNextLabel = (list: Alarm[]): string => {
+    const next = list
+      .map(alarm => nextOccurrence(alarm, now))
+      .filter((at): at is number => at !== null)
+      .sort((a, b) => a - b)[0]
+    return next ? ` · ${t.nextShort} ${formatCountdown(next - now)}` : ''
   }
 
-  const daysLabel = (alarm: Alarm): string => {
-    if (alarm.days.length === 0) return t.once
-    if (alarm.days.length === 7) return t.everyDay
-    if (alarm.days.length === 5 && WEEKDAY_SET.every(day => alarm.days.includes(day))) return t.weekdays
-    if (alarm.days.length === 2 && WEEKEND_SET.every(day => alarm.days.includes(day))) return t.weekend
-    return alarm.days.map(day => t.daysShort[day]).join(' ')
+  const createFolder = () => {
+    const folder = newFolder(t.newFolder)
+    upsertFolder(folder)
+    setScreen({ name: 'folder', folderId: folder.id })
   }
+
+  const isEmpty = folders.length === 0 && looseAlarms.length === 0
 
   return (
     <ScreenShell color="amber">
@@ -76,37 +80,58 @@ const Home = () => {
         )}
       </motion.div>
 
-      <div className="stack" style={{ marginTop: 22, paddingBottom: 110 }}>
-        {sorted.length === 0 && (
+      <div className="stack" style={{ marginTop: 22, paddingBottom: 140 }}>
+        {isEmpty && (
           <div className="card card--dark" style={{ textAlign: 'center', whiteSpace: 'pre-line', padding: '30px 20px', fontWeight: 600 }}>
             {t.noAlarms}
           </div>
         )}
-        {sorted.map((alarm, index) => (
-          <motion.div
-            key={alarm.id}
-            className={`card alarm-card ${alarm.enabled ? '' : 'off'}`}
-            initial={{ y: 24, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.06 * index, type: 'spring', stiffness: 300, damping: 26 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setTimeout(() => setScreen({ name: 'edit', alarmId: alarm.id }), PRESS_ANIMATION_MS)}
-          >
-            <div className="meta">
-              <div className="time">{formatTime(alarm.hour, alarm.minute)}</div>
-              <div className="days">
-                {daysLabel(alarm)}
-                {alarm.label ? ` · ${alarm.label}` : ''} · {puzzleLabel(alarm)}
+
+        {folders.map((folder, index) => {
+          const list = folderAlarms(folder)
+          const anyOn = list.some(alarm => alarm.enabled)
+          const count = list.length
+          return (
+            <motion.div
+              key={folder.id}
+              className={`card folder-card ${anyOn ? '' : 'off'}`}
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.06 * index, type: 'spring', stiffness: 300, damping: 26 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setScreen({ name: 'folder', folderId: folder.id })}
+            >
+              <span className="folder-glyph"><FolderIcon /></span>
+              <div className="meta">
+                <div className="folder-name">{folder.name}</div>
+                <div className="days">
+                  {count} {count === 1 ? t.alarmOne : t.alarmMany}
+                  {folderNextLabel(list)}
+                </div>
               </div>
-            </div>
-            <div onClick={e => e.stopPropagation()}>
-              <WToggle on={alarm.enabled} onChange={enabled => toggleAlarm(alarm.id, enabled)} />
-            </div>
-          </motion.div>
+              <div onClick={e => e.stopPropagation()}>
+                <WToggle on={anyOn} onChange={enabled => setFolderEnabled(folder.id, enabled)} />
+              </div>
+            </motion.div>
+          )
+        })}
+
+        {looseAlarms.map((alarm, index) => (
+          <AlarmCard
+            key={alarm.id}
+            alarm={alarm}
+            t={t}
+            index={folders.length + index}
+            onOpen={() => setScreen({ name: 'edit', alarmId: alarm.id })}
+            onToggle={enabled => toggleAlarm(alarm.id, enabled)}
+          />
         ))}
       </div>
 
       <div className="fab">
+        <PressButton variant="ghost round" onClick={createFolder} style={{ width: 54, height: 54 }}>
+          <FolderPlusIcon />
+        </PressButton>
         <PressButton variant="dark round" onClick={() => setScreen({ name: 'edit' })}>
           +
         </PressButton>

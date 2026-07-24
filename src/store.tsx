@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from 'react'
 
 // internal — absolute paths
-import type { Alarm, Settings, Screen } from '@/types'
+import type { Alarm, Folder, Settings, Screen } from '@/types'
 import { defaultSettings, normalizeAlarm } from '@/types'
 import { loadJSON, saveJSON } from '@/storage'
 import type { Dict } from '@/i18n'
@@ -12,6 +12,7 @@ import { nextOccurrence, syncNotifications } from '@/alarm/scheduler'
 // ===== CONFIGURATIONS =====
 const StorageKeys = {
   alarms: 'alarms',
+  folders: 'folders',
   settings: 'settings',
 }
 
@@ -20,6 +21,7 @@ const FIRE_WINDOW_MS = 60000
 
 interface Store {
   alarms: Alarm[]
+  folders: Folder[]
   settings: Settings
   screen: Screen
   t: Dict
@@ -28,6 +30,9 @@ interface Store {
   upsertAlarm: (alarm: Alarm) => void
   deleteAlarm: (id: string) => void
   toggleAlarm: (id: string, enabled: boolean) => void
+  upsertFolder: (folder: Folder) => void
+  deleteFolder: (id: string) => void
+  setFolderEnabled: (id: string, enabled: boolean) => void
   setSettings: (patch: Partial<Settings>) => void
 }
 
@@ -36,6 +41,7 @@ const Ctx = createContext<Store | null>(null)
 // ===== MAIN COMPONENT =====
 const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [alarms, setAlarms] = useState<Alarm[]>([])
+  const [folders, setFolders] = useState<Folder[]>([])
   const [settings, setSettingsState] = useState<Settings>(defaultSettings)
   const [screen, setScreen] = useState<Screen>({ name: 'home' })
   const [ready, setReady] = useState(false)
@@ -46,11 +52,13 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const load = async () => {
-      const [storedAlarms, storedSettings] = await Promise.all([
+      const [storedAlarms, storedFolders, storedSettings] = await Promise.all([
         loadJSON<Alarm[]>(StorageKeys.alarms),
+        loadJSON<Folder[]>(StorageKeys.folders),
         loadJSON<Settings>(StorageKeys.settings),
       ])
       if (storedAlarms) setAlarms(storedAlarms.map(normalizeAlarm))
+      if (storedFolders) setFolders(storedFolders)
       if (storedSettings) setSettingsState({ ...defaultSettings, ...storedSettings })
       setReady(true)
     }
@@ -62,6 +70,11 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
     saveJSON(StorageKeys.alarms, alarms)
     syncNotifications(alarms)
   }, [alarms, ready])
+
+  useEffect(() => {
+    if (!ready) return
+    saveJSON(StorageKeys.folders, folders)
+  }, [folders, ready])
 
   useEffect(() => {
     if (!ready) return
@@ -106,6 +119,25 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
     setAlarms(prev => prev.map(alarm => (alarm.id === id ? { ...alarm, enabled } : alarm)))
   }, [])
 
+  const upsertFolder = useCallback((folder: Folder) => {
+    setFolders(prev => {
+      const index = prev.findIndex(item => item.id === folder.id)
+      if (index === -1) return [...prev, folder]
+      const copy = prev.slice()
+      copy[index] = folder
+      return copy
+    })
+  }, [])
+
+  const deleteFolder = useCallback((id: string) => {
+    setFolders(prev => prev.filter(folder => folder.id !== id))
+    setAlarms(prev => prev.map(alarm => (alarm.folderId === id ? { ...alarm, folderId: undefined } : alarm)))
+  }, [])
+
+  const setFolderEnabled = useCallback((id: string, enabled: boolean) => {
+    setAlarms(prev => prev.map(alarm => (alarm.folderId === id ? { ...alarm, enabled } : alarm)))
+  }, [])
+
   const setSettings = useCallback((patch: Partial<Settings>) => {
     setSettingsState(prev => ({ ...prev, ...patch }))
   }, [])
@@ -113,7 +145,7 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
   const t = getDict(settings.language)
 
   return (
-    <Ctx.Provider value={{ alarms, settings, screen, t, ready, setScreen, upsertAlarm, deleteAlarm, toggleAlarm, setSettings }}>
+    <Ctx.Provider value={{ alarms, folders, settings, screen, t, ready, setScreen, upsertAlarm, deleteAlarm, toggleAlarm, upsertFolder, deleteFolder, setFolderEnabled, setSettings }}>
       {children}
     </Ctx.Provider>
   )

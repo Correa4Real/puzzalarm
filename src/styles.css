@@ -427,6 +427,49 @@ body {
   letter-spacing: 0.06em;
 }
 
+.folder-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.folder-card.off {
+  opacity: 0.55;
+}
+
+.folder-card .meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.folder-card .folder-name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-card .folder-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.14);
+  flex-shrink: 0;
+}
+
+.folder-card .days {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-top: 4px;
+  letter-spacing: 0.06em;
+}
+
 /* ===== Ringtone list ===== */
 .ringtone-list {
   display: flex;
@@ -509,6 +552,10 @@ input.text-input::placeholder { color: rgba(255, 255, 255, 0.55); }
   bottom: calc(26px + var(--safe-bottom));
   right: 24px;
   z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .ringing-time {

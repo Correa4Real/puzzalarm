@@ -31,6 +31,12 @@ export interface Alarm {
   solvedMessage?: string
   snoozeMinutes: number
   oneShotAt?: number
+  folderId?: string
+}
+
+export interface Folder {
+  id: string
+  name: string
 }
 
 export interface Settings {
@@ -42,7 +48,8 @@ export interface Settings {
 
 export type Screen =
   | { name: 'home' }
-  | { name: 'edit'; alarmId?: string }
+  | { name: 'edit'; alarmId?: string; folderId?: string }
+  | { name: 'folder'; folderId: string }
   | { name: 'settings' }
   | { name: 'tutorial'; from: 'settings' | 'home' }
   | { name: 'test' }
@@ -80,6 +87,11 @@ const newAlarm = (): Alarm => ({
   snoozeMinutes: DefaultAlarmValues.snoozeMinutes,
 })
 
+const newFolder = (name: string): Folder => ({
+  id: Math.random().toString(36).slice(2, 10),
+  name,
+})
+
 const normalizeAlarm = (raw: Alarm & { puzzleType?: PuzzleType | 'random' }): Alarm => {
   const puzzleTypes =
     Array.isArray(raw.puzzleTypes) && raw.puzzleTypes.length > 0
@@ -95,4 +107,4 @@ const normalizeAlarm = (raw: Alarm & { puzzleType?: PuzzleType | 'random' }): Al
 }
 
 // ===== EXPORT =====
-export { defaultSettings, newAlarm, normalizeAlarm, ALL_PUZZLE_TYPES, MAX_PUZZLE_COUNT }
+export { defaultSettings, newAlarm, newFolder, normalizeAlarm, ALL_PUZZLE_TYPES, MAX_PUZZLE_COUNT }
