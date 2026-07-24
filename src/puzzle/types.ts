@@ -1,11 +1,16 @@
 // ===== TYPES =====
-export type PuzzleType = 'maze' | 'dots' | 'squares' | 'colors' | 'symmetry' | 'symhex'
-export type Difficulty = 'easy' | 'medium' | 'hard'
+export type PuzzleType = 'maze' | 'dots' | 'squares' | 'colors' | 'symmetry' | 'symhex' | 'triangles' | 'tetris' | 'subtract'
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert'
 export type SymmetryKind = 'horizontal' | 'rotational'
+export type TriangleCount = 1 | 2 | 3
 
 export interface Vertex {
   x: number
   y: number
+}
+
+export interface TetrisShape {
+  cells: Array<[number, number]>
 }
 
 export interface Puzzle {
@@ -18,6 +23,9 @@ export interface Puzzle {
   dots: string[]
   mirrorDots: string[]
   squares: Record<number, number>
+  triangles: Record<number, TriangleCount>
+  tetris: Record<number, TetrisShape>
+  tetrisBlue: Record<number, TetrisShape>
   solution: number[]
   symmetryKind: SymmetryKind
 }

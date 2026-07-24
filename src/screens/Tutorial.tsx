@@ -12,7 +12,7 @@ import { alarmSound } from '@/audio/alarmSound'
 import { setScreenBarColor, ScreenColor } from '@/statusbar'
 
 // ===== CONFIGURATIONS =====
-const ScreenColorByType: Record<PuzzleType, ScreenColor> = { maze: 'amber', dots: 'green', squares: 'blue', colors: 'rose', symmetry: 'teal', symhex: 'teal' }
+const ScreenColorByType: Record<PuzzleType, ScreenColor> = { maze: 'amber', dots: 'green', squares: 'blue', colors: 'rose', symmetry: 'teal', symhex: 'teal', triangles: 'amber', tetris: 'amber', subtract: 'blue' }
 
 interface Props {
   from: 'settings' | 'home'
@@ -25,13 +25,16 @@ const Tutorial = ({ from }: Props) => {
   const [solved, setSolved] = useState(false)
   const [resetSignal, setResetSignal] = useState(0)
 
-  const steps: Array<{ type: PuzzleType; texts: string[] }> = [
-    { type: 'maze', texts: [t.tutMaze1, t.tutMaze2] },
-    { type: 'dots', texts: [t.tutDots1] },
-    { type: 'squares', texts: [t.tutSquares1] },
-    { type: 'colors', texts: [t.tutColors1] },
-    { type: 'symmetry', texts: [t.tutSymmetry1] },
-    { type: 'symhex', texts: [t.tutSymhex1] },
+  const steps: Array<{ type: PuzzleType; label: string; texts: string[] }> = [
+    { type: 'maze', label: t.maze, texts: [t.tutMaze1, t.tutMaze2] },
+    { type: 'dots', label: t.dots, texts: [t.tutDots1] },
+    { type: 'squares', label: t.squares, texts: [t.tutSquares1] },
+    { type: 'colors', label: t.colors, texts: [t.tutColors1] },
+    { type: 'symmetry', label: t.symmetry, texts: [t.tutSymmetry1] },
+    { type: 'symhex', label: t.symhex, texts: [t.tutSymhex1] },
+    { type: 'triangles', label: t.triangles, texts: [t.tutTriangles1] },
+    { type: 'tetris', label: t.tetris, texts: [t.tutTetris1] },
+    { type: 'subtract', label: t.subtract, texts: [t.tutSubtract1] },
   ]
 
   const current = steps[step]
@@ -43,10 +46,15 @@ const Tutorial = ({ from }: Props) => {
 
   const goBack = () => setScreen({ name: from === 'settings' ? 'settings' : 'home' })
 
+  const goToStep = (index: number) => {
+    if (index === step) return
+    setStep(index)
+    setSolved(false)
+  }
+
   const next = () => {
     if (step < steps.length - 1) {
-      setStep(step + 1)
-      setSolved(false)
+      goToStep(step + 1)
     } else {
       goBack()
     }
@@ -62,6 +70,26 @@ const Tutorial = ({ from }: Props) => {
         <span style={{ width: 48, fontFamily: 'var(--font-display)', fontWeight: 700, textAlign: 'right' }}>
           {step + 1}/{steps.length}
         </span>
+      </div>
+
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8 }}>
+        <PressButton
+          variant="ghost"
+          disabled={step === 0}
+          onClick={() => goToStep(step - 1)}
+          style={{ padding: '10px 14px' }}
+        >
+          {'←'}
+        </PressButton>
+        <span style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: 16 }}>{current.label}</span>
+        <PressButton
+          variant="ghost"
+          disabled={step === steps.length - 1}
+          onClick={() => goToStep(step + 1)}
+          style={{ padding: '10px 14px' }}
+        >
+          {'→'}
+        </PressButton>
       </div>
 
       <AnimatePresence mode="wait">

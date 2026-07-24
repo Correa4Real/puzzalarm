@@ -15,8 +15,8 @@ import { dismissAlarmNotifications } from '@/alarm/nativeAlarms'
 import { setScreenBarColor, ScreenColor } from '@/statusbar'
 
 // ===== CONFIGURATIONS =====
-const ScreenColorByType: Record<PuzzleType, ScreenColor> = { maze: 'amber', dots: 'green', squares: 'blue', colors: 'rose', symmetry: 'teal', symhex: 'teal' }
-const PUZZLE_TYPES: PuzzleType[] = ['maze', 'dots', 'squares', 'colors', 'symmetry', 'symhex']
+const ScreenColorByType: Record<PuzzleType, ScreenColor> = { maze: 'amber', dots: 'green', squares: 'blue', colors: 'rose', symmetry: 'teal', symhex: 'teal', triangles: 'amber', tetris: 'amber', subtract: 'blue' }
+const PUZZLE_TYPES: PuzzleType[] = ['maze', 'dots', 'squares', 'colors', 'symmetry', 'symhex', 'triangles', 'tetris', 'subtract']
 const EASE_MIN_RESETS = 5
 const EASE_MIN_RINGING_MS = 5 * 60 * 1000
 const STOP_REDIRECT_MS = 1900

@@ -25,6 +25,9 @@ const panelThemes: Record<Puzzle['type'], PanelTheme> = {
   colors: { bg: '#d84f6e', grid: '#571523', line: '#ffd7de', lineGlow: '#fff0f3', dot: '#3d0d16' },
   symmetry: { bg: '#17b5c0', grid: '#06484f', line: '#ffef9a', lineGlow: '#fffbe0', dot: '#032f34', mirrorLine: '#bff7ff' },
   symhex: { bg: '#0f9bb0', grid: '#043842', line: '#ffe36e', lineGlow: '#fff6cf', dot: '#ffd75e', mirrorLine: '#7fe3ff' },
+  triangles: { bg: '#c86b2b', grid: '#4a1f08', line: '#ffe1c8', lineGlow: '#fff3ea', dot: '#2e1204' },
+  tetris: { bg: '#b8a12f', grid: '#3d3406', line: '#fff2b3', lineGlow: '#fffbe5', dot: '#1c1802' },
+  subtract: { bg: '#4a7ec9', grid: '#0b2952', line: '#d8e4ff', lineGlow: '#f0f5ff', dot: '#04122e' },
 }
 
 const SYMHEX_MAIN_DOT = '#ffd75e'
@@ -34,6 +37,11 @@ const SquarePalettes: Record<string, string[]> = {
   squares: ['#101014', '#fafaf2'],
   colors: ['#fafaf2', '#ffb01f', '#7b2fd0', '#17c964'],
 }
+const TETRIS_FILL = '#f4c73a'
+const TETRIS_STROKE = '#3d3406'
+const TETRIS_BLUE_FILL = '#4ac0ff'
+const TETRIS_BLUE_STROKE = '#0b3d63'
+const TRIANGLE_FILL = '#ffb454'
 
 const PANEL_MARGIN = 0.72
 const STROKE = 0.2
@@ -51,6 +59,10 @@ const FAIL_LINE_COLOR = '#1a1a1a'
 const SQUARE_SIZE = 0.38
 const SQUARE_RADIUS = 0.11
 const DOT_RADIUS = 0.11
+const TRIANGLE_SIZE = 0.16
+const TRIANGLE_GAP = 0.05
+const TETRIS_CELL = 0.11
+const TETRIS_GAP = 0.02
 
 interface Props {
   puzzle: Puzzle
@@ -75,6 +87,11 @@ const hexagonPoints = (cx: number, cy: number, radius: number): string =>
     const angle = (Math.PI / 3) * i + Math.PI / 6
     return `${cx + radius * Math.cos(angle)},${cy + radius * Math.sin(angle)}`
   }).join(' ')
+
+const trianglePoints = (cx: number, cy: number, size: number): string => {
+  const h = size * Math.sqrt(3) / 2
+  return `${cx},${cy - h * 0.55} ${cx - size / 2},${cy + h * 0.45} ${cx + size / 2},${cy + h * 0.45}`
+}
 
 const pathD = (points: Point[]): string =>
   points.length > 0 ? 'M ' + points.map(p => `${p.x} ${p.y}`).join(' L ') : ''
@@ -401,6 +418,106 @@ const PuzzlePanel = ({ puzzle, onSolved, onFail, resetSignal = 0, disabled }: Pr
             rx={SQUARE_RADIUS}
             fill={squarePalette[color % squarePalette.length]}
           />
+        )
+      })}
+
+      {Object.entries(puzzle.triangles).map(([cell, count]) => {
+        const index = Number(cell)
+        const cx = PANEL_MARGIN + (index % puzzle.cols) + 0.5
+        const cy = PANEL_MARGIN + Math.floor(index / puzzle.cols) + 0.5
+        const totalWidth = count * TRIANGLE_SIZE + (count - 1) * TRIANGLE_GAP
+        const startX = cx - totalWidth / 2 + TRIANGLE_SIZE / 2
+        const isViolation = violations?.triangleCells?.includes(index)
+        return (
+          <g key={`tri-${cell}`} className={isViolation ? 'violation' : ''}>
+            {Array.from({ length: count }, (_, i) => (
+              <polygon
+                key={i}
+                points={trianglePoints(startX + i * (TRIANGLE_SIZE + TRIANGLE_GAP), cy, TRIANGLE_SIZE)}
+                fill={TRIANGLE_FILL}
+                stroke={theme.grid}
+                strokeWidth={0.018}
+              />
+            ))}
+          </g>
+        )
+      })}
+
+      {Object.entries(puzzle.tetris).map(([cell, shape]) => {
+        const index = Number(cell)
+        const cx = PANEL_MARGIN + (index % puzzle.cols) + 0.5
+        const cy = PANEL_MARGIN + Math.floor(index / puzzle.cols) + 0.5
+        const xs = shape.cells.map(([dx]) => dx)
+        const ys = shape.cells.map(([, dy]) => dy)
+        const minX = Math.min(...xs)
+        const maxX = Math.max(...xs)
+        const minY = Math.min(...ys)
+        const maxY = Math.max(...ys)
+        const step = TETRIS_CELL + TETRIS_GAP
+        const totalW = (maxX - minX + 1) * step - TETRIS_GAP
+        const totalH = (maxY - minY + 1) * step - TETRIS_GAP
+        const originX = cx - totalW / 2
+        const originY = cy - totalH / 2
+        const isViolation = violations?.tetrisCells?.includes(index)
+        return (
+          <g key={`tet-${cell}`} className={isViolation ? 'violation' : ''}>
+            {shape.cells.map(([dx, dy], i) => (
+              <rect
+                key={i}
+                x={originX + (dx - minX) * step}
+                y={originY + (dy - minY) * step}
+                width={TETRIS_CELL}
+                height={TETRIS_CELL}
+                fill={TETRIS_FILL}
+                stroke={TETRIS_STROKE}
+                strokeWidth={0.015}
+              />
+            ))}
+          </g>
+        )
+      })}
+
+      {Object.entries(puzzle.tetrisBlue).map(([cell, shape]) => {
+        const index = Number(cell)
+        const cx = PANEL_MARGIN + (index % puzzle.cols) + 0.5
+        const cy = PANEL_MARGIN + Math.floor(index / puzzle.cols) + 0.5
+        const xs = shape.cells.map(([dx]) => dx)
+        const ys = shape.cells.map(([, dy]) => dy)
+        const minX = Math.min(...xs)
+        const maxX = Math.max(...xs)
+        const minY = Math.min(...ys)
+        const maxY = Math.max(...ys)
+        const step = TETRIS_CELL + TETRIS_GAP
+        const totalW = (maxX - minX + 1) * step - TETRIS_GAP
+        const totalH = (maxY - minY + 1) * step - TETRIS_GAP
+        const originX = cx - totalW / 2
+        const originY = cy - totalH / 2
+        const isViolation = violations?.tetrisCells?.includes(index)
+        return (
+          <g key={`tetB-${cell}`} className={isViolation ? 'violation' : ''}>
+            {shape.cells.map(([dx, dy], i) => (
+              <rect
+                key={i}
+                x={originX + (dx - minX) * step}
+                y={originY + (dy - minY) * step}
+                width={TETRIS_CELL}
+                height={TETRIS_CELL}
+                fill="none"
+                stroke={TETRIS_BLUE_STROKE}
+                strokeWidth={0.025}
+              />
+            ))}
+            {shape.cells.map(([dx, dy], i) => (
+              <rect
+                key={`f-${i}`}
+                x={originX + (dx - minX) * step + TETRIS_CELL * 0.25}
+                y={originY + (dy - minY) * step + TETRIS_CELL * 0.25}
+                width={TETRIS_CELL * 0.5}
+                height={TETRIS_CELL * 0.5}
+                fill={TETRIS_BLUE_FILL}
+              />
+            ))}
+          </g>
         )
       })}
 

@@ -151,6 +151,15 @@ const EditAlarm = ({ alarmId }: Props) => {
               { value: 'symhex', label: t.symhex },
             ]}
           />
+          <MultiSelect
+            values={draft.puzzleTypes}
+            onToggle={togglePuzzleType}
+            options={[
+              { value: 'triangles', label: t.triangles },
+              { value: 'tetris', label: t.tetris },
+              { value: 'subtract', label: t.subtract },
+            ]}
+          />
           <span className="label-sm" style={{ marginTop: 6 }}>{t.difficulty}</span>
           <Segmented
             value={draft.difficulty}
@@ -159,6 +168,7 @@ const EditAlarm = ({ alarmId }: Props) => {
               { value: 'easy', label: t.easy },
               { value: 'medium', label: t.medium },
               { value: 'hard', label: t.hard },
+              { value: 'expert', label: t.expert },
             ]}
           />
           <span className="label-sm" style={{ marginTop: 6 }}>{t.puzzleCount}</span>

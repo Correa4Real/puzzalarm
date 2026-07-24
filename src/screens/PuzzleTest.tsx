@@ -11,7 +11,7 @@ import { alarmSound } from '@/audio/alarmSound'
 import { setScreenBarColor, ScreenColor } from '@/statusbar'
 
 // ===== CONFIGURATIONS =====
-const ScreenColorByType: Record<PuzzleType, ScreenColor> = { maze: 'amber', dots: 'green', squares: 'blue', colors: 'rose', symmetry: 'teal', symhex: 'teal' }
+const ScreenColorByType: Record<PuzzleType, ScreenColor> = { maze: 'amber', dots: 'green', squares: 'blue', colors: 'rose', symmetry: 'teal', symhex: 'teal', triangles: 'amber', tetris: 'amber', subtract: 'blue' }
 const NEXT_PUZZLE_DELAY_MS = 1200
 
 // ===== MAIN COMPONENT =====
@@ -70,6 +70,18 @@ const PuzzleTest = () => {
           ]}
         />
         <Segmented
+          value={type}
+          onChange={nextType => {
+            setType(nextType)
+            regenerate(nextType, difficulty)
+          }}
+          options={[
+            { value: 'triangles', label: t.triangles },
+            { value: 'tetris', label: t.tetris },
+            { value: 'subtract', label: t.subtract },
+          ]}
+        />
+        <Segmented
           value={difficulty}
           onChange={nextDifficulty => {
             setDifficulty(nextDifficulty)
@@ -79,6 +91,7 @@ const PuzzleTest = () => {
             { value: 'easy', label: t.easy },
             { value: 'medium', label: t.medium },
             { value: 'hard', label: t.hard },
+            { value: 'expert', label: t.expert },
           ]}
         />
       </div>

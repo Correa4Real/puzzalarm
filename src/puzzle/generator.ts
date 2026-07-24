@@ -1,5 +1,5 @@
 // internal — relative
-import type { Puzzle, PuzzleType, Difficulty, SymmetryKind } from './types'
+import type { Puzzle, PuzzleType, Difficulty, SymmetryKind, TetrisShape, TriangleCount } from './types'
 import { edgeKey, vertexAt, vertexXY, neighbors, isBorder, mirrorVertex, mirrorEdgeKey } from './types'
 
 // ===== CONFIGURATIONS =====
@@ -14,41 +14,84 @@ const SizeTable: Record<PuzzleType, Record<Difficulty, SizeSpec>> = {
     easy: { cols: 4, rows: 4, minLen: 9 },
     medium: { cols: 5, rows: 5, minLen: 14 },
     hard: { cols: 6, rows: 6, minLen: 20 },
+    expert: { cols: 6, rows: 6, minLen: 22 },
   },
   dots: {
     easy: { cols: 3, rows: 3, minLen: 7 },
     medium: { cols: 4, rows: 4, minLen: 11 },
     hard: { cols: 5, rows: 5, minLen: 16 },
+    expert: { cols: 5, rows: 5, minLen: 17 },
   },
   squares: {
     easy: { cols: 2, rows: 2, minLen: 4 },
     medium: { cols: 3, rows: 3, minLen: 6 },
     hard: { cols: 4, rows: 4, minLen: 9 },
+    expert: { cols: 4, rows: 4, minLen: 10 },
   },
   colors: {
     easy: { cols: 3, rows: 3, minLen: 8 },
     medium: { cols: 4, rows: 4, minLen: 10 },
     hard: { cols: 5, rows: 5, minLen: 14 },
+    expert: { cols: 5, rows: 5, minLen: 15 },
   },
   symmetry: {
     easy: { cols: 5, rows: 3, minLen: 8 },
     medium: { cols: 5, rows: 4, minLen: 12 },
     hard: { cols: 5, rows: 5, minLen: 15 },
+    expert: { cols: 5, rows: 5, minLen: 17 },
   },
   symhex: {
     easy: { cols: 5, rows: 3, minLen: 8 },
     medium: { cols: 5, rows: 4, minLen: 11 },
     hard: { cols: 5, rows: 5, minLen: 14 },
+    expert: { cols: 5, rows: 5, minLen: 16 },
+  },
+  triangles: {
+    easy: { cols: 3, rows: 3, minLen: 7 },
+    medium: { cols: 4, rows: 4, minLen: 10 },
+    hard: { cols: 5, rows: 5, minLen: 14 },
+    expert: { cols: 5, rows: 5, minLen: 16 },
+  },
+  tetris: {
+    easy: { cols: 3, rows: 3, minLen: 4 },
+    medium: { cols: 4, rows: 4, minLen: 6 },
+    hard: { cols: 5, rows: 5, minLen: 8 },
+    expert: { cols: 5, rows: 5, minLen: 10 },
+  },
+  subtract: {
+    easy: { cols: 4, rows: 4, minLen: 5 },
+    medium: { cols: 4, rows: 4, minLen: 6 },
+    hard: { cols: 5, rows: 5, minLen: 8 },
+    expert: { cols: 5, rows: 5, minLen: 10 },
   },
 }
 
-const BrokenEdgeFraction: Record<Difficulty, number> = { easy: 0.45, medium: 0.5, hard: 0.55 }
-const SymmetryBrokenFraction: Record<Difficulty, number> = { easy: 0.35, medium: 0.45, hard: 0.5 }
-const DotCount: Record<Difficulty, number> = { easy: 3, medium: 5, hard: 7 }
-const SymhexDotCount: Record<Difficulty, number> = { easy: 2, medium: 3, hard: 4 }
-const SquareDensity: Record<Difficulty, number> = { easy: 0.9, medium: 0.7, hard: 0.6 }
-const ColorsMinRegions: Record<Difficulty, number> = { easy: 2, medium: 3, hard: 3 }
-const ColorsPaletteSize: Record<Difficulty, number> = { easy: 3, medium: 3, hard: 4 }
+const BrokenEdgeFraction: Record<Difficulty, number> = { easy: 0.45, medium: 0.5, hard: 0.55, expert: 0.58 }
+const SymmetryBrokenFraction: Record<Difficulty, number> = { easy: 0.35, medium: 0.45, hard: 0.5, expert: 0.55 }
+const DotCount: Record<Difficulty, number> = { easy: 3, medium: 5, hard: 7, expert: 8 }
+const SymhexDotCount: Record<Difficulty, number> = { easy: 2, medium: 3, hard: 4, expert: 5 }
+const SquareDensity: Record<Difficulty, number> = { easy: 0.9, medium: 0.7, hard: 0.6, expert: 0.55 }
+const ColorsMinRegions: Record<Difficulty, number> = { easy: 2, medium: 3, hard: 3, expert: 4 }
+const ColorsPaletteSize: Record<Difficulty, number> = { easy: 3, medium: 3, hard: 4, expert: 4 }
+const TrianglesCellCountRange: Record<Difficulty, [number, number]> = {
+  easy: [1, 2],
+  medium: [2, 3],
+  hard: [2, 3],
+  expert: [4, 5],
+}
+const TetrisPieceCountRange: Record<Difficulty, [number, number]> = {
+  easy: [2, 3],
+  medium: [2, 4],
+  hard: [3, 5],
+  expert: [4, 6],
+}
+const SubtractYellowRange: Record<Difficulty, [number, number]> = {
+  easy: [2, 2],
+  medium: [2, 3],
+  hard: [3, 4],
+  expert: [3, 5],
+}
+const SubtractBlueCount: Record<Difficulty, number> = { easy: 1, medium: 1, hard: 2, expert: 3 }
 const DOTS_BROKEN_FRACTION = 0.15
 const SYMHEX_BROKEN_FRACTION = 0.3
 const MAX_GENERATION_ATTEMPTS = 800
@@ -56,8 +99,61 @@ const MIN_SOLVE_FRACTION = 0.7
 const SYMMETRY_MIN_SOLVE_FRACTION = 0.6
 const MIN_SOLVE_FLOOR = 4
 
+const CANONICAL_TETROMINOES: Array<Array<[number, number]>> = [
+  [[0, 0], [1, 0], [2, 0], [3, 0]],
+  [[0, 0], [0, 1], [0, 2], [0, 3]],
+  [[0, 0], [1, 0], [0, 1], [1, 1]],
+  [[0, 0], [1, 0], [2, 0], [1, 1]],
+  [[0, 0], [0, 1], [1, 1], [0, 2]],
+  [[1, 0], [0, 1], [1, 1], [2, 1]],
+  [[1, 0], [0, 1], [1, 1], [1, 2]],
+  [[0, 0], [0, 1], [0, 2], [1, 2]],
+  [[0, 0], [1, 0], [2, 0], [0, 1]],
+  [[0, 0], [1, 0], [1, 1], [1, 2]],
+  [[2, 0], [0, 1], [1, 1], [2, 1]],
+  [[1, 0], [1, 1], [0, 2], [1, 2]],
+  [[0, 0], [0, 1], [1, 1], [2, 1]],
+  [[0, 0], [1, 0], [0, 1], [0, 2]],
+  [[0, 0], [1, 0], [2, 0], [2, 1]],
+  [[1, 0], [2, 0], [0, 1], [1, 1]],
+  [[0, 0], [0, 1], [1, 1], [1, 2]],
+  [[0, 0], [1, 0], [1, 1], [2, 1]],
+  [[1, 0], [0, 1], [1, 1], [0, 2]],
+]
+
+const MONOMINO: Array<Array<[number, number]>> = [
+  [[0, 0]],
+]
+
+const DOMINOES: Array<Array<[number, number]>> = [
+  [[0, 0], [1, 0]],
+  [[0, 0], [0, 1]],
+]
+
+const STRAIGHT_TROMINOES: Array<Array<[number, number]>> = [
+  [[0, 0], [1, 0], [2, 0]],
+  [[0, 0], [0, 1], [0, 2]],
+]
+
+const CORNER_TROMINOES: Array<Array<[number, number]>> = [
+  [[0, 0], [1, 0], [0, 1]],
+  [[0, 0], [1, 0], [1, 1]],
+  [[0, 0], [0, 1], [1, 1]],
+  [[1, 0], [0, 1], [1, 1]],
+]
+
+const POLYOMINO_POOL: Array<Array<[number, number]>> = [
+  ...MONOMINO,
+  ...DOMINOES,
+  ...STRAIGHT_TROMINOES,
+  ...CORNER_TROMINOES,
+  ...CANONICAL_TETROMINOES,
+]
+
 // ===== UTILITIES =====
 const randomInt = (n: number): number => Math.floor(Math.random() * n)
+
+const randomInRange = (min: number, max: number): number => min + randomInt(max - min + 1)
 
 const shuffle = <T,>(items: T[]): T[] => {
   const result = items.slice()
@@ -67,6 +163,17 @@ const shuffle = <T,>(items: T[]): T[] => {
   }
   return result
 }
+
+const emptyPuzzle = (base: Partial<Puzzle> & Pick<Puzzle, 'type' | 'cols' | 'rows' | 'start' | 'ends' | 'solution' | 'symmetryKind'>): Puzzle => ({
+  brokenEdges: [],
+  dots: [],
+  mirrorDots: [],
+  squares: {},
+  triangles: {},
+  tetris: {},
+  tetrisBlue: {},
+  ...base,
+})
 
 const randomPath = (cols: number, rows: number, start: number, end: number, minLen: number): number[] | null => {
   const path: number[] = [start]
@@ -141,6 +248,19 @@ const touchesVertices = (edge: string, protectedVertices: Set<number>): boolean 
   return protectedVertices.has(a) || protectedVertices.has(b)
 }
 
+const cellEdgeKeys = (cell: number, cols: number): string[] => {
+  const cx = cell % cols
+  const cy = Math.floor(cell / cols)
+  const tl = vertexAt(cx, cy, cols)
+  const tr = vertexAt(cx + 1, cy, cols)
+  const bl = vertexAt(cx, cy + 1, cols)
+  const br = vertexAt(cx + 1, cy + 1, cols)
+  return [edgeKey(tl, tr), edgeKey(bl, br), edgeKey(tl, bl), edgeKey(tr, br)]
+}
+
+const pathEdgesOnCell = (cell: number, cols: number, onPath: Set<string>): number =>
+  cellEdgeKeys(cell, cols).filter(edge => onPath.has(edge)).length
+
 const cellRegions = (cols: number, rows: number, path: number[]): number[][] => {
   const onPath = pathEdges(path)
   const seen = new Set<number>()
@@ -197,6 +317,153 @@ const assignRegionColors = (regions: number[][], paletteSize: number, density: n
   return used.size >= 2 ? squares : null
 }
 
+const assignTriangles = (cols: number, rows: number, onPath: Set<string>, targetCount: number): Record<number, TriangleCount> | null => {
+  const eligible: Array<{ cell: number; count: TriangleCount }> = []
+  for (let cell = 0; cell < cols * rows; cell++) {
+    const count = pathEdgesOnCell(cell, cols, onPath)
+    if (count >= 1 && count <= 3) eligible.push({ cell, count: count as TriangleCount })
+  }
+  if (eligible.length < targetCount) return null
+  const picked = shuffle(eligible).slice(0, targetCount)
+  const triangles: Record<number, TriangleCount> = {}
+  picked.forEach(entry => { triangles[entry.cell] = entry.count })
+  return triangles
+}
+
+const feasiblePieceCount = (totalCells: number, pieceRange: [number, number]): boolean => {
+  for (let pieces = pieceRange[0]; pieces <= pieceRange[1]; pieces++) {
+    if (pieces <= totalCells && totalCells <= pieces * 4) return true
+  }
+  return false
+}
+
+const packRegionMixed = (
+  region: number[], cols: number, rows: number,
+  pieceRange: [number, number], maxOverlap: number,
+): number[][] | null => {
+  const regionSet = new Set(region)
+  const placements: number[][] = []
+  const coverage = new Map<number, number>()
+  let overlapUsed = 0
+  const [minPieces, maxPieces] = pieceRange
+
+  const tryPlace = (): boolean => {
+    let target: number | undefined
+    for (const c of region) if ((coverage.get(c) ?? 0) === 0) { target = c; break }
+    if (target === undefined) {
+      if (overlapUsed < maxOverlap) {
+        if (placements.length >= maxPieces) return false
+        target = region[randomInt(region.length)]
+      } else {
+        return placements.length >= minPieces && placements.length <= maxPieces
+      }
+    } else if (placements.length >= maxPieces) {
+      return false
+    }
+    const tx = target % cols
+    const ty = Math.floor(target / cols)
+    for (const shape of shuffle(POLYOMINO_POOL)) {
+      for (const [ax, ay] of shuffle(shape)) {
+        const originX = tx - ax
+        const originY = ty - ay
+        const placedCells: number[] = []
+        let ok = true
+        let newOverlap = 0
+        for (const [dx, dy] of shape) {
+          const nx = originX + dx
+          const ny = originY + dy
+          if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) { ok = false; break }
+          const c = ny * cols + nx
+          if (!regionSet.has(c)) { ok = false; break }
+          if ((coverage.get(c) ?? 0) > 0) newOverlap += 1
+          placedCells.push(c)
+        }
+        if (!ok) continue
+        if (overlapUsed + newOverlap > maxOverlap) continue
+        let capExceeded = false
+        for (const c of placedCells) if ((coverage.get(c) ?? 0) >= 2) { capExceeded = true; break }
+        if (capExceeded) continue
+        placedCells.forEach(c => coverage.set(c, (coverage.get(c) ?? 0) + 1))
+        placements.push(placedCells)
+        overlapUsed += newOverlap
+        if (tryPlace()) return true
+        placedCells.forEach(c => coverage.set(c, coverage.get(c)! - 1))
+        placements.pop()
+        overlapUsed -= newOverlap
+      }
+    }
+    return false
+  }
+
+  if (tryPlace()) return placements.map(p => [...p])
+  return null
+}
+
+const shapeFromCells = (cells: number[], anchorCell: number, cols: number): TetrisShape => {
+  const ax = anchorCell % cols
+  const ay = Math.floor(anchorCell / cols)
+  return {
+    cells: cells.map(cell => {
+      const cx = cell % cols
+      const cy = Math.floor(cell / cols)
+      return [cx - ax, cy - ay] as [number, number]
+    }),
+  }
+}
+
+const pickAnchor = (piece: number[], used: Set<number>): number | null => {
+  for (const cell of piece) if (!used.has(cell)) return cell
+  return null
+}
+
+const assignTetrisMixed = (regions: number[][], cols: number, rows: number, pieceRange: [number, number]): Record<number, TetrisShape> | null => {
+  const candidates = shuffle(regions.filter(region => feasiblePieceCount(region.length, pieceRange)))
+  for (const region of candidates) {
+    const placements = packRegionMixed(region, cols, rows, pieceRange, 0)
+    if (!placements) continue
+    const yellow: Record<number, TetrisShape> = {}
+    const usedAnchors = new Set<number>()
+    let ok = true
+    for (const piece of placements) {
+      const anchor = pickAnchor(piece, usedAnchors)
+      if (anchor === null) { ok = false; break }
+      usedAnchors.add(anchor)
+      yellow[anchor] = shapeFromCells(piece, anchor, cols)
+    }
+    if (ok) return yellow
+  }
+  return null
+}
+
+const assignSubtract = (
+  regions: number[][], cols: number, rows: number, yellowRange: [number, number], blueCount: number,
+): { yellow: Record<number, TetrisShape>; blue: Record<number, TetrisShape> } | null => {
+  const candidates = shuffle(regions.filter(region => feasiblePieceCount(region.length + blueCount, yellowRange)))
+  for (const region of candidates) {
+    const placements = packRegionMixed(region, cols, rows, yellowRange, blueCount)
+    if (!placements) continue
+    const coverage = new Map<number, number>()
+    placements.forEach(piece => piece.forEach(cell => coverage.set(cell, (coverage.get(cell) ?? 0) + 1)))
+    const overlapCells = new Set<number>()
+    for (const [cell, count] of coverage) if (count === 2) overlapCells.add(cell)
+    if (overlapCells.size !== blueCount) continue
+    const yellow: Record<number, TetrisShape> = {}
+    const usedAnchors = new Set<number>([...overlapCells])
+    let ok = true
+    for (const piece of placements) {
+      const anchor = pickAnchor(piece, usedAnchors)
+      if (anchor === null) { ok = false; break }
+      usedAnchors.add(anchor)
+      yellow[anchor] = shapeFromCells(piece, anchor, cols)
+    }
+    if (!ok) continue
+    const blue: Record<number, TetrisShape> = {}
+    for (const cell of overlapCells) blue[cell] = { cells: [[0, 0]] }
+    return { yellow, blue }
+  }
+  return null
+}
+
 const shortestSolveDistance = (puzzle: Puzzle): number => {
   const broken = new Set(puzzle.brokenEdges)
   const isMirrorType = puzzle.type === 'symmetry' || puzzle.type === 'symhex'
@@ -234,6 +501,18 @@ const protectedEndpoints = (puzzle: Pick<Puzzle, 'type' | 'cols' | 'rows' | 'sta
   return vertices
 }
 
+const applyExpertLayer = (puzzle: Puzzle, onPath: Set<string>, diff: Difficulty): void => {
+  if (diff !== 'expert') return
+  const type = puzzle.type
+  if (type === 'maze' || type === 'dots' || type === 'squares' || type === 'colors') {
+    const extra = assignTriangles(puzzle.cols, puzzle.rows, onPath, TrianglesCellCountRange[diff][0])
+    if (extra) Object.assign(puzzle.triangles, extra)
+  } else if (type === 'tetris' || type === 'subtract') {
+    const pathList = shuffle([...onPath])
+    pathList.slice(0, 2).forEach(edge => puzzle.dots.push(`e:${edge}`))
+  }
+}
+
 // ===== SERVICE =====
 const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
   const { cols, rows, minLen } = SizeTable[type][diff]
@@ -247,10 +526,7 @@ const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
     if (!solution) return null
     const onPath = pathEdges(solution)
     const onMirror = new Set([...onPath].map(edge => mirrorEdgeKey(edge, cols, rows, kind)))
-    const base: Puzzle = {
-      type, cols, rows, start, ends: [end],
-      brokenEdges: [], dots: [], mirrorDots: [], squares: {}, solution, symmetryKind: kind,
-    }
+    const base = emptyPuzzle({ type, cols, rows, start, ends: [end], solution, symmetryKind: kind })
     const keepClear = protectedEndpoints(base)
     const removable = shuffle(
       allEdges(cols, rows).filter(
@@ -278,10 +554,7 @@ const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
   if (!solution) return null
   const onPath = pathEdges(solution)
 
-  const base: Puzzle = {
-    type, cols, rows, start, ends: [end],
-    brokenEdges: [], dots: [], mirrorDots: [], squares: {}, solution, symmetryKind: 'horizontal',
-  }
+  const base = emptyPuzzle({ type, cols, rows, start, ends: [end], solution, symmetryKind: 'horizontal' })
   const keepClear = protectedEndpoints(base)
 
   if (type === 'maze') {
@@ -292,6 +565,7 @@ const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
     if (shortestSolveDistance(base) < Math.max(MIN_SOLVE_FLOOR, Math.round(minLen * MIN_SOLVE_FRACTION))) {
       return null
     }
+    applyExpertLayer(base, onPath, diff)
     return base
   }
 
@@ -304,15 +578,44 @@ const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
       allEdges(cols, rows).filter(edge => !onPath.has(edge) && !touchesVertices(edge, keepClear)),
     )
     base.brokenEdges = removable.slice(0, Math.floor(removable.length * DOTS_BROKEN_FRACTION))
+    applyExpertLayer(base, onPath, diff)
+    return base
+  }
+
+  if (type === 'triangles') {
+    const [minCells, maxCells] = TrianglesCellCountRange[diff]
+    const target = randomInRange(minCells, maxCells)
+    const triangles = assignTriangles(cols, rows, onPath, target)
+    if (!triangles) return null
+    base.triangles = triangles
     return base
   }
 
   const regions = cellRegions(cols, rows, solution)
+
+  if (type === 'tetris') {
+    const yellow = assignTetrisMixed(regions, cols, rows, TetrisPieceCountRange[diff])
+    if (!yellow) return null
+    base.tetris = yellow
+    applyExpertLayer(base, onPath, diff)
+    return base
+  }
+
+  if (type === 'subtract') {
+    const result = assignSubtract(regions, cols, rows, SubtractYellowRange[diff], SubtractBlueCount[diff])
+    if (!result) return null
+    base.tetris = result.yellow
+    base.tetrisBlue = result.blue
+    applyExpertLayer(base, onPath, diff)
+    return base
+  }
+
   if (type === 'colors') {
     if (regions.length < ColorsMinRegions[diff]) return null
     const squares = assignRegionColors(regions, ColorsPaletteSize[diff], SquareDensity[diff])
     if (!squares) return null
     base.squares = squares
+    applyExpertLayer(base, onPath, diff)
     return base
   }
 
@@ -320,22 +623,91 @@ const tryGenerate = (type: PuzzleType, diff: Difficulty): Puzzle | null => {
   const squares = assignRegionColors(regions, 2, SquareDensity[diff])
   if (!squares) return null
   base.squares = squares
+  applyExpertLayer(base, onPath, diff)
   return base
+}
+
+const canTileRegion = (
+  region: number[],
+  pieces: Array<{ shape: TetrisShape; sign: 1 | -1 }>,
+  cols: number,
+  rows: number,
+): boolean => {
+  const totalSigned = pieces.reduce((sum, piece) => sum + piece.shape.cells.length * piece.sign, 0)
+  if (totalSigned !== region.length) return false
+  const regionSet = new Set(region)
+  const coverage = new Map<number, number>()
+  const used = new Array(pieces.length).fill(false)
+
+  const tryFill = (): boolean => {
+    let target: number | undefined
+    for (const c of region) {
+      const cov = coverage.get(c) ?? 0
+      if (cov !== 1) { target = c; break }
+    }
+    if (target === undefined) return used.every(u => u)
+    const targetCov = coverage.get(target) ?? 0
+    const needsPositive = targetCov < 1
+    const tx = target % cols
+    const ty = Math.floor(target / cols)
+    for (let i = 0; i < pieces.length; i++) {
+      if (used[i]) continue
+      const piece = pieces[i]
+      if (needsPositive && piece.sign !== 1) continue
+      if (!needsPositive && piece.sign !== -1) continue
+      for (const [refDx, refDy] of piece.shape.cells) {
+        const originX = tx - refDx
+        const originY = ty - refDy
+        const placedCells: number[] = []
+        let ok = true
+        for (const [dx, dy] of piece.shape.cells) {
+          const nx = originX + dx
+          const ny = originY + dy
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) { ok = false; break }
+          const c = ny * cols + nx
+          if (!regionSet.has(c)) { ok = false; break }
+          placedCells.push(c)
+        }
+        if (!ok) continue
+        used[i] = true
+        placedCells.forEach(c => coverage.set(c, (coverage.get(c) ?? 0) + piece.sign))
+        if (tryFill()) return true
+        placedCells.forEach(c => coverage.set(c, coverage.get(c)! - piece.sign))
+        used[i] = false
+      }
+    }
+    return false
+  }
+
+  return tryFill()
+}
+
+const sanityCheckSolution = (puzzle: Puzzle): boolean => {
+  const hasPieces = Object.keys(puzzle.tetris).length > 0 || Object.keys(puzzle.tetrisBlue).length > 0
+  if (!hasPieces) return true
+  const regions = cellRegions(puzzle.cols, puzzle.rows, puzzle.solution)
+  for (const region of regions) {
+    const yellowAnchors = region.filter(cell => puzzle.tetris[cell] !== undefined)
+    const blueAnchors = region.filter(cell => puzzle.tetrisBlue[cell] !== undefined)
+    if (yellowAnchors.length === 0 && blueAnchors.length === 0) continue
+    const pieces: Array<{ shape: TetrisShape; sign: 1 | -1 }> = []
+    for (const a of yellowAnchors) pieces.push({ shape: puzzle.tetris[a], sign: 1 })
+    for (const a of blueAnchors) pieces.push({ shape: puzzle.tetrisBlue[a], sign: -1 })
+    if (!canTileRegion(region, pieces, puzzle.cols, puzzle.rows)) return false
+  }
+  return true
 }
 
 const generatePuzzle = (type: PuzzleType, diff: Difficulty): Puzzle => {
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
     const puzzle = tryGenerate(type, diff)
-    if (puzzle) return puzzle
+    if (puzzle && sanityCheckSolution(puzzle)) return puzzle
   }
   const { cols, rows } = SizeTable.maze.easy
   const start = vertexAt(0, rows, cols)
   const end = vertexAt(cols, 0, cols)
   const solution = randomPath(cols, rows, start, end, 3)!
-  return {
-    type: 'maze', cols, rows, start, ends: [end],
-    brokenEdges: [], dots: [], mirrorDots: [], squares: {}, solution, symmetryKind: 'horizontal',
-  }
+  return emptyPuzzle({ type: 'maze', cols, rows, start, ends: [end], solution, symmetryKind: 'horizontal' })
 }
 
 const easePuzzle = (puzzle: Puzzle): Puzzle => {
@@ -346,6 +718,9 @@ const easePuzzle = (puzzle: Puzzle): Puzzle => {
     dots: [...puzzle.dots],
     mirrorDots: [...puzzle.mirrorDots],
     squares: { ...puzzle.squares },
+    triangles: { ...puzzle.triangles },
+    tetris: { ...puzzle.tetris },
+    tetrisBlue: { ...puzzle.tetrisBlue },
   }
   if (puzzle.type === 'maze' || puzzle.type === 'symmetry') {
     const startPos = vertexXY(puzzle.start, puzzle.cols)
@@ -367,7 +742,15 @@ const easePuzzle = (puzzle: Puzzle): Puzzle => {
     eased.dots = eased.dots.slice(0, Math.max(1, Math.ceil(eased.dots.length / 2)))
     eased.mirrorDots = eased.mirrorDots.slice(0, Math.max(1, Math.ceil(eased.mirrorDots.length / 2)))
     if (puzzle.type === 'dots') eased.brokenEdges = []
-  } else {
+  } else if (puzzle.type === 'triangles') {
+    const keys = Object.keys(eased.triangles).map(Number)
+    if (keys.length > 1) {
+      const remove = keys.slice(0, keys.length - 1)
+      shuffle(remove).slice(0, Math.floor(remove.length / 2)).forEach(key => delete eased.triangles[key])
+    }
+  } else if (puzzle.type === 'subtract') {
+    eased.tetrisBlue = {}
+  } else if (puzzle.type !== 'tetris') {
     const keys = Object.keys(eased.squares).map(Number)
     shuffle(keys).slice(0, Math.floor(keys.length / 2)).forEach(key => delete eased.squares[key])
   }
@@ -375,4 +758,4 @@ const easePuzzle = (puzzle: Puzzle): Puzzle => {
 }
 
 // ===== EXPORT =====
-export { generatePuzzle, easePuzzle, cellRegions }
+export { generatePuzzle, easePuzzle, cellRegions, cellEdgeKeys, pathEdges, pathEdgesOnCell, canTileRegion }

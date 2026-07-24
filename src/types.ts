@@ -2,7 +2,7 @@
 import type { PuzzleType, Difficulty } from '@/puzzle/types'
 
 // ===== CONFIGURATIONS =====
-const ALL_PUZZLE_TYPES: PuzzleType[] = ['maze', 'dots', 'squares', 'colors', 'symmetry', 'symhex']
+const ALL_PUZZLE_TYPES: PuzzleType[] = ['maze', 'dots', 'squares', 'colors', 'symmetry', 'symhex', 'triangles', 'tetris', 'subtract']
 const MAX_PUZZLE_COUNT = 5
 
 // ===== TYPES =====
