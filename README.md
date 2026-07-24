@@ -1,4 +1,4 @@
-# Puzzalarm
+# Draw to Wake
 
 Despertador que só desliga quando você resolve um puzzle no estilo **The Witness**: desenhe uma linha do círculo até o arco de saída.
 

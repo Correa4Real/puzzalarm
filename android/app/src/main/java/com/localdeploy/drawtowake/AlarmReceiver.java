@@ -1,4 +1,4 @@
-package com.tistars.puzzalarm;
+package com.localdeploy.drawtowake;
 
 // external libs
 import android.app.Notification;
@@ -18,7 +18,7 @@ import androidx.core.app.NotificationCompat;
 // ===== CONFIGURATIONS =====
 public class AlarmReceiver extends BroadcastReceiver {
 
-    static final String CHANNEL_ID = "puzzalarm_alarm";
+    static final String CHANNEL_ID = "drawtowake_alarm";
     static final String EXTRA_ALARM_ID = "alarmId";
     static final String EXTRA_NOTIF_ID = "notifId";
     static final String EXTRA_TITLE = "title";
@@ -46,7 +46,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(context.getApplicationInfo().icon)
-            .setContentTitle(title != null ? title : "Puzzalarm")
+            .setContentTitle(title != null ? title : "Draw to Wake")
             .setContentText(body != null ? body : "")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -75,7 +75,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             PowerManager power = context.getSystemService(PowerManager.class);
             PowerManager.WakeLock lock = power.newWakeLock(
                 PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
-                "puzzalarm:alarm"
+                "drawtowake:alarm"
             );
             lock.acquire(10000);
         } catch (Exception ignored) {
@@ -88,7 +88,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         NotificationManager manager = context.getSystemService(NotificationManager.class);
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return;
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Alarmes", NotificationManager.IMPORTANCE_HIGH);
-        channel.setDescription("Alarmes do Puzzalarm");
+        channel.setDescription("Alarmes do Draw to Wake");
         channel.setBypassDnd(true);
         channel.enableVibration(true);
         channel.setSound(

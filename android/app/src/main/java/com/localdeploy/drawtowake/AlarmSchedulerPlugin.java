@@ -1,4 +1,4 @@
-package com.tistars.puzzalarm;
+package com.localdeploy.drawtowake;
 
 // external libs
 import android.app.AlarmManager;
@@ -27,7 +27,7 @@ import java.util.Set;
 @CapacitorPlugin(name = "AlarmScheduler")
 public class AlarmSchedulerPlugin extends Plugin {
 
-    static final String PREFS = "puzzalarm_scheduler";
+    static final String PREFS = "drawtowake_scheduler";
     static final String KEY_CODES = "codes";
     static final String KEY_ALARMS = "alarms";
 
@@ -122,7 +122,7 @@ public class AlarmSchedulerPlugin extends Plugin {
             Intent intent = new Intent(context, AlarmReceiver.class);
             intent.putExtra(AlarmReceiver.EXTRA_ALARM_ID, item.getString("id"));
             intent.putExtra(AlarmReceiver.EXTRA_NOTIF_ID, notifId);
-            intent.putExtra(AlarmReceiver.EXTRA_TITLE, item.optString("title", "Puzzalarm"));
+            intent.putExtra(AlarmReceiver.EXTRA_TITLE, item.optString("title", "Draw to Wake"));
             intent.putExtra(AlarmReceiver.EXTRA_BODY, item.optString("body", ""));
             PendingIntent firePending = PendingIntent.getBroadcast(
                 context, notifId, intent,

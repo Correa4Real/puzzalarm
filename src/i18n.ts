@@ -4,7 +4,7 @@ type Lang = 'pt' | 'en'
 // ===== CONFIGURATIONS =====
 const dict = {
   pt: {
-    appName: 'Puzzalarm',
+    appName: 'Draw to Wake',
     alarms: 'Alarmes',
     noAlarms: 'Nenhum alarme ainda.\nToque no + para criar o primeiro.',
     newAlarm: 'Novo alarme',
@@ -108,7 +108,7 @@ const dict = {
     nextShort: 'próx.',
   },
   en: {
-    appName: 'Puzzalarm',
+    appName: 'Draw to Wake',
     alarms: 'Alarms',
     noAlarms: 'No alarms yet.\nTap + to create your first one.',
     newAlarm: 'New alarm',

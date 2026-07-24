@@ -1,4 +1,4 @@
-package com.tistars.puzzalarm;
+package com.localdeploy.drawtowake;
 
 // external libs
 import android.content.Intent;

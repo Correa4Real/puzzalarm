@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.tistars.puzzalarm',
-  appName: 'Puzzalarm',
+  appId: 'com.localdeploy.drawtowake',
+  appName: 'Draw to Wake',
   webDir: 'dist',
   plugins: {
     LocalNotifications: {

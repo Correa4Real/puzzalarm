@@ -8,7 +8,7 @@ import type { Alarm } from '@/types'
 import { scheduleNativeAlarms } from '@/alarm/nativeAlarms'
 
 // ===== CONFIGURATIONS =====
-const NOTIFICATION_TITLE = 'Puzzalarm'
+const NOTIFICATION_TITLE = 'Draw to Wake'
 const NOTIFICATION_ID_RANGE = 100000
 const VIBRATION_PULSE_MS = 600
 const VIBRATION_INTERVAL_MS = 1600
