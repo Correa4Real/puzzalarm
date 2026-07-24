@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.view.WindowManager;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.PluginHandle;
+import com.getcapacitor.Plugin;
 
 // ===== MAIN ACTIVITY =====
 public class MainActivity extends BridgeActivity {
@@ -31,13 +33,30 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
         handleAlarmIntent(intent);
     }
 
     private void handleAlarmIntent(Intent intent) {
         if (intent == null) return;
         String alarmId = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_ID);
-        if (alarmId != null) pendingAlarmId = alarmId;
+        if (alarmId == null) return;
+        pendingAlarmId = alarmId;
+        intent.removeExtra(AlarmReceiver.EXTRA_ALARM_ID);
+        emitAlarmFired(alarmId);
+    }
+
+    private void emitAlarmFired(String alarmId) {
+        try {
+            if (getBridge() == null) return;
+            PluginHandle handle = getBridge().getPlugin("AlarmScheduler");
+            if (handle == null) return;
+            Plugin plugin = handle.getInstance();
+            if (plugin instanceof AlarmSchedulerPlugin) {
+                ((AlarmSchedulerPlugin) plugin).emitAlarmFired(alarmId);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private void applyLockScreenFlags() {

@@ -7,7 +7,14 @@ import { defaultSettings, normalizeAlarm } from '@/types'
 import { loadJSON, saveJSON } from '@/storage'
 import type { Dict } from '@/i18n'
 import { getDict } from '@/i18n'
-import { nextOccurrence, syncNotifications } from '@/alarm/scheduler'
+import { syncNotifications } from '@/alarm/scheduler'
+import {
+  ensureLoaded,
+  dueOccurrence,
+  isOccurrenceHandled,
+  markOccurrenceHandled,
+  clearHandledOccurrence,
+} from '@/alarm/session'
 
 // ===== CONFIGURATIONS =====
 const StorageKeys = {
@@ -17,7 +24,6 @@ const StorageKeys = {
 }
 
 const TICK_INTERVAL_MS = 1000
-const FIRE_WINDOW_MS = 60000
 
 interface Store {
   alarms: Alarm[]
@@ -27,6 +33,7 @@ interface Store {
   t: Dict
   ready: boolean
   setScreen: (screen: Screen) => void
+  openRinging: (alarmId: string) => boolean
   upsertAlarm: (alarm: Alarm) => void
   deleteAlarm: (id: string) => void
   toggleAlarm: (id: string, enabled: boolean) => void
@@ -52,6 +59,7 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const load = async () => {
+      await ensureLoaded()
       const [storedAlarms, storedFolders, storedSettings] = await Promise.all([
         loadJSON<Alarm[]>(StorageKeys.alarms),
         loadJSON<Folder[]>(StorageKeys.folders),
@@ -81,20 +89,28 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
     saveJSON(StorageKeys.settings, settings)
   }, [settings, ready])
 
+  const openRinging = useCallback((alarmId: string): boolean => {
+    if (screenRef.current.name === 'ringing') return false
+    const alarm = alarmsRef.current.find(item => item.id === alarmId)
+    if (!alarm || !alarm.enabled) return false
+    const at = dueOccurrence(alarm)
+    if (at === null) return false
+    if (isOccurrenceHandled(alarmId, at)) return false
+    markOccurrenceHandled(alarmId, at)
+    setScreen({ name: 'ringing', alarmId })
+    return true
+  }, [])
+
   useEffect(() => {
-    const fired = new Set<string>()
     const tick = () => {
       if (screenRef.current.name === 'ringing') return
-      const now = Date.now()
       for (const alarm of alarmsRef.current) {
-        const at = nextOccurrence(alarm, now - FIRE_WINDOW_MS)
-        if (at !== null && at <= now && now - at < FIRE_WINDOW_MS) {
-          const key = `${alarm.id}:${at}`
-          if (fired.has(key)) continue
-          fired.add(key)
-          setScreen({ name: 'ringing', alarmId: alarm.id })
-          return
-        }
+        const at = dueOccurrence(alarm)
+        if (at === null) continue
+        if (isOccurrenceHandled(alarm.id, at)) continue
+        markOccurrenceHandled(alarm.id, at)
+        setScreen({ name: 'ringing', alarmId: alarm.id })
+        return
       }
     }
     const id = window.setInterval(tick, TICK_INTERVAL_MS)
@@ -102,6 +118,7 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const upsertAlarm = useCallback((alarm: Alarm) => {
+    if (alarm.oneShotAt && alarm.oneShotAt > Date.now()) clearHandledOccurrence(alarm.id)
     setAlarms(prev => {
       const index = prev.findIndex(item => item.id === alarm.id)
       if (index === -1) return [...prev, alarm]
@@ -112,6 +129,7 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const deleteAlarm = useCallback((id: string) => {
+    clearHandledOccurrence(id)
     setAlarms(prev => prev.filter(alarm => alarm.id !== id))
   }, [])
 
@@ -145,7 +163,25 @@ const StoreProvider = ({ children }: { children: ReactNode }) => {
   const t = getDict(settings.language)
 
   return (
-    <Ctx.Provider value={{ alarms, folders, settings, screen, t, ready, setScreen, upsertAlarm, deleteAlarm, toggleAlarm, upsertFolder, deleteFolder, setFolderEnabled, setSettings }}>
+    <Ctx.Provider
+      value={{
+        alarms,
+        folders,
+        settings,
+        screen,
+        t,
+        ready,
+        setScreen,
+        openRinging,
+        upsertAlarm,
+        deleteAlarm,
+        toggleAlarm,
+        upsertFolder,
+        deleteFolder,
+        setFolderEnabled,
+        setSettings,
+      }}
+    >
       {children}
     </Ctx.Provider>
   )

@@ -37,7 +37,12 @@ public class AlarmReceiver extends BroadcastReceiver {
         createChannel(context);
 
         Intent launch = new Intent(context, MainActivity.class);
-        launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        launch.setFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK |
+            Intent.FLAG_ACTIVITY_CLEAR_TOP |
+            Intent.FLAG_ACTIVITY_SINGLE_TOP |
+            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        );
         launch.putExtra(EXTRA_ALARM_ID, alarmId);
         PendingIntent fullScreen = PendingIntent.getActivity(
             context, notifId, launch,
@@ -53,7 +58,8 @@ public class AlarmReceiver extends BroadcastReceiver {
             .setFullScreenIntent(fullScreen, true)
             .setContentIntent(fullScreen)
             .setOngoing(true)
-            .setAutoCancel(true)
+            .setAutoCancel(false)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build();
 
         try {
@@ -61,11 +67,9 @@ public class AlarmReceiver extends BroadcastReceiver {
         } catch (Exception ignored) {
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            try {
-                context.startActivity(launch);
-            } catch (Exception ignored) {
-            }
+        try {
+            context.startActivity(launch);
+        } catch (Exception ignored) {
         }
     }
 
@@ -91,6 +95,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         channel.setDescription("Alarmes do Draw to Wake");
         channel.setBypassDnd(true);
         channel.enableVibration(true);
+        channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         channel.setSound(
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
             new AudioAttributes.Builder()

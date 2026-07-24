@@ -16,6 +16,10 @@ interface AlarmSchedulerPlugin {
   dismissNotifications(): Promise<void>
   canUseFullScreenIntent(): Promise<{ granted: boolean }>
   openFullScreenIntentSettings(): Promise<void>
+  addListener(
+    eventName: 'alarmFired',
+    listenerFunc: (event: { alarmId: string }) => void,
+  ): Promise<{ remove: () => void }>
 }
 
 // ===== CONFIGURATIONS =====
@@ -71,6 +75,19 @@ const openFullScreenIntentSettings = async (): Promise<void> => {
   }
 }
 
+const addAlarmFiredListener = async (
+  listener: (alarmId: string) => void,
+): Promise<{ remove: () => void }> => {
+  if (!nativeAlarmsAvailable()) return { remove: () => undefined }
+  try {
+    return await plugin.addListener('alarmFired', event => {
+      if (event?.alarmId) listener(event.alarmId)
+    })
+  } catch {
+    return { remove: () => undefined }
+  }
+}
+
 // ===== EXPORT =====
 export {
   nativeAlarmsAvailable,
@@ -79,4 +96,5 @@ export {
   dismissAlarmNotifications,
   canUseFullScreenIntent,
   openFullScreenIntentSettings,
+  addAlarmFiredListener,
 }

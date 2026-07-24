@@ -78,7 +78,7 @@ const Ringing = ({ alarmId }: Props) => {
       alarmSound.stop()
       stopVibration()
     }
-  }, [])
+  }, [alarmId])
 
   useEffect(() => {
     if (eased || resets <= EASE_MIN_RESETS) return
@@ -112,6 +112,7 @@ const Ringing = ({ alarmId }: Props) => {
   const finishStop = () => {
     alarmSound.stop()
     stopVibration()
+    dismissAlarmNotifications()
     alarmSound.playSuccess()
     if (alarm) {
       if (alarm.days.length === 0) upsertAlarm({ ...alarm, enabled: false, oneShotAt: undefined })
@@ -127,6 +128,7 @@ const Ringing = ({ alarmId }: Props) => {
   const finishSnooze = () => {
     alarmSound.stop()
     stopVibration()
+    dismissAlarmNotifications()
     alarmSound.playSuccess()
     if (alarm) {
       const minutes = alarm.snoozeMinutes || settings.snoozeMinutes

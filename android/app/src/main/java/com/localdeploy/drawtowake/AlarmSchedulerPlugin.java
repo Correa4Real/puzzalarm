@@ -95,6 +95,12 @@ public class AlarmSchedulerPlugin extends Plugin {
         call.resolve();
     }
 
+    void emitAlarmFired(String alarmId) {
+        JSObject data = new JSObject();
+        data.put("alarmId", alarmId);
+        notifyListeners("alarmFired", data);
+    }
+
     // ===== UTILITIES =====
     static void cancelStored(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);

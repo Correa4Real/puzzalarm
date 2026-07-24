@@ -7,7 +7,7 @@ import { App as CapacitorApp } from '@capacitor/app'
 // internal — absolute paths
 import type { Screen } from '@/types'
 import { useStore } from '@/store'
-import { consumeLaunchAlarmId } from '@/alarm/nativeAlarms'
+import { consumeLaunchAlarmId, addAlarmFiredListener } from '@/alarm/nativeAlarms'
 import Home from '@/screens/Home'
 import EditAlarm from '@/screens/EditAlarm'
 import FolderScreen from '@/screens/Folder'
@@ -73,7 +73,7 @@ const renderScreen = (screen: Screen) => {
 
 // ===== MAIN COMPONENT =====
 const App = () => {
-  const { screen, ready, setScreen } = useStore()
+  const { screen, ready, setScreen, openRinging } = useStore()
   const previousScreenRef = useRef(screen)
   const directionRef = useRef(1)
   const screenRef = useRef(screen)
@@ -115,17 +115,43 @@ const App = () => {
   }, [setScreen])
 
   useEffect(() => {
+    if (!ready) return
+
     const openPendingAlarm = async () => {
       const alarmId = await consumeLaunchAlarmId()
-      if (alarmId) setScreen({ name: 'ringing', alarmId })
+      if (alarmId) openRinging(alarmId)
     }
+
     const onVisible = () => {
       if (document.visibilityState === 'visible') openPendingAlarm()
     }
+
     openPendingAlarm()
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [setScreen])
+
+    let appStateHandle: { remove: () => void } | null = null
+    let alarmFiredHandle: { remove: () => void } | null = null
+
+    if (Capacitor.isNativePlatform()) {
+      CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) openPendingAlarm()
+      }).then(handle => {
+        appStateHandle = handle
+      })
+
+      addAlarmFiredListener(alarmId => {
+        openRinging(alarmId)
+      }).then(handle => {
+        alarmFiredHandle = handle
+      })
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      appStateHandle?.remove()
+      alarmFiredHandle?.remove()
+    }
+  }, [ready, openRinging])
 
   if (!ready) return <div className="app" />
 
