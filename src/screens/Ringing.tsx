@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import gsap from 'gsap'
+import { Capacitor } from '@capacitor/core'
+import { App as CapacitorApp } from '@capacitor/app'
 
 // internal — absolute paths
 import type { PuzzleType, Difficulty } from '@/puzzle/types'
@@ -122,7 +124,10 @@ const Ringing = ({ alarmId }: Props) => {
     if (rootRef.current) {
       gsap.fromTo(rootRef.current, { filter: 'brightness(1)' }, { filter: 'brightness(1.6)', duration: 0.25, yoyo: true, repeat: 1 })
     }
-    setTimeout(() => setScreen({ name: 'home' }), STOP_REDIRECT_MS)
+    setTimeout(() => {
+      setScreen({ name: 'home' })
+      if (Capacitor.isNativePlatform()) CapacitorApp.exitApp()
+    }, STOP_REDIRECT_MS)
   }
 
   const finishSnooze = () => {

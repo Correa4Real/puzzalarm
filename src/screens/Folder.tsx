@@ -19,15 +19,25 @@ const byTime = (a: Alarm, b: Alarm): number => a.hour * 60 + a.minute - (b.hour 
 
 // ===== MAIN COMPONENT =====
 const FolderScreen = ({ folderId }: Props) => {
-  const { alarms, folders, t, setScreen, toggleAlarm, upsertFolder, deleteFolder, setFolderEnabled } = useStore()
+  const {
+    alarms,
+    folders,
+    t,
+    foldersAreLocked,
+    setScreen,
+    toggleAlarm,
+    upsertFolder,
+    deleteFolder,
+    setFolderEnabled,
+  } = useStore()
   const folder = folders.find(item => item.id === folderId)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   useEffect(() => {
-    if (!folder) setScreen({ name: 'home' })
-  }, [folder, setScreen])
+    if (!folder || foldersAreLocked) setScreen({ name: 'home' })
+  }, [folder, foldersAreLocked, setScreen])
 
-  if (!folder) return null
+  if (!folder || foldersAreLocked) return null
 
   const list = alarms.filter(alarm => alarm.folderId === folderId).sort(byTime)
   const anyOn = list.some(alarm => alarm.enabled)

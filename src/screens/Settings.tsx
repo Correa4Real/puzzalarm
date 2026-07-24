@@ -1,7 +1,13 @@
+// external libs
+import { useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
+
 // internal — absolute paths
 import { useStore } from '@/store'
 import { PressButton, Segmented, ScreenShell } from '@/components/ui'
 import { nativeAlarmsAvailable, openFullScreenIntentSettings } from '@/alarm/nativeAlarms'
+import { isPro, PRO_PRICE_BRL } from '@/plan'
+import Paywall from '@/components/Paywall'
 
 // ===== CONFIGURATIONS =====
 const SNOOZE_MIN = 1
@@ -12,7 +18,9 @@ const RAMP_STEP = 5
 
 // ===== MAIN COMPONENT =====
 const Settings = () => {
-  const { settings, t, setScreen, setSettings } = useStore()
+  const { settings, t, setScreen, setSettings, downgradeToFree } = useStore()
+  const [showPaywall, setShowPaywall] = useState(false)
+  const pro = isPro(settings.plan)
 
   return (
     <ScreenShell color="blue">
@@ -25,6 +33,23 @@ const Settings = () => {
       </div>
 
       <div className="stack" style={{ paddingBottom: 30 }}>
+        <div className="card card--dark stack">
+          <span className="label-sm">{t.managePlan}</span>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>
+            {pro ? t.planPro : t.planFree}
+          </div>
+          {!pro && (
+            <PressButton variant="dark" onClick={() => setShowPaywall(true)} style={{ fontSize: 15 }}>
+              {t.paywallSubscribe} · R$ {PRO_PRICE_BRL}{t.paywallPerMonth}
+            </PressButton>
+          )}
+          {pro && (
+            <PressButton variant="ghost" onClick={downgradeToFree} style={{ fontSize: 14 }}>
+              {t.cancelPro}
+            </PressButton>
+          )}
+        </div>
+
         <div className="card card--dark stack">
           <span className="label-sm">{t.language}</span>
           <Segmented
@@ -84,6 +109,10 @@ const Settings = () => {
           {t.alarmPermission}
         </div>
       </div>
+
+      <AnimatePresence>
+        {showPaywall && <Paywall reason="generic" onClose={() => setShowPaywall(false)} />}
+      </AnimatePresence>
     </ScreenShell>
   )
 }

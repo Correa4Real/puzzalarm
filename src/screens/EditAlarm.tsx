@@ -1,9 +1,10 @@
 // external libs
 import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 
 // internal — absolute paths
 import type { Alarm, Screen, SoundId, CustomSound } from '@/types'
-import type { PuzzleType } from '@/puzzle/types'
+import type { PuzzleType, Difficulty } from '@/puzzle/types'
 import { newAlarm, MAX_PUZZLE_COUNT } from '@/types'
 import { useStore } from '@/store'
 import { loadJSON, saveJSON } from '@/storage'
@@ -12,6 +13,15 @@ import { alarmSound } from '@/audio/alarmSound'
 import { ringtonesAvailable, listRingtones, Ringtone } from '@/audio/ringtones'
 import { ensureNotificationPermission, tapHaptic } from '@/alarm/scheduler'
 import { canUseFullScreenIntent, openFullScreenIntentSettings } from '@/alarm/nativeAlarms'
+import {
+  canCreateAlarm,
+  clampAlarmForPlan,
+  isPro,
+  isPuzzleTypeFree,
+  isDifficultyFree,
+} from '@/plan'
+import Paywall from '@/components/Paywall'
+import type { PaywallProps } from '@/components/Paywall'
 
 // ===== CONFIGURATIONS =====
 const LABEL_MAX_LENGTH = 30
@@ -24,14 +34,23 @@ interface Props {
 
 // ===== MAIN COMPONENT =====
 const EditAlarm = ({ alarmId, folderId }: Props) => {
-  const { alarms, t, setScreen, upsertAlarm, deleteAlarm } = useStore()
+  const { alarms, settings, t, foldersAreLocked, setScreen, upsertAlarm, deleteAlarm } = useStore()
   const existing = alarms.find(alarm => alarm.id === alarmId)
-  const [draft, setDraft] = useState<Alarm>(existing ? { ...existing } : { ...newAlarm(), folderId })
+  const [draft, setDraft] = useState<Alarm>(() => {
+    const base = existing ? { ...existing } : { ...newAlarm(), folderId }
+    return clampAlarmForPlan(base, settings.plan)
+  })
   const returnScreen: Screen = draft.folderId ? { name: 'folder', folderId: draft.folderId } : { name: 'home' }
   const [customSoundName, setCustomSoundName] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [ringtones, setRingtones] = useState<Ringtone[] | null>(null)
+  const [paywallReason, setPaywallReason] = useState<PaywallProps['reason'] | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pro = isPro(settings.plan)
+
+  useEffect(() => {
+    if (folderId && foldersAreLocked) setScreen({ name: 'home' })
+  }, [folderId, foldersAreLocked, setScreen])
 
   useEffect(() => {
     loadJSON<CustomSound>(CUSTOM_SOUND_KEY).then(stored => {
@@ -65,6 +84,10 @@ const EditAlarm = ({ alarmId, folderId }: Props) => {
   }
 
   const togglePuzzleType = (type: PuzzleType) => {
+    if (!pro && !isPuzzleTypeFree(type)) {
+      setPaywallReason('puzzles')
+      return
+    }
     if (draft.puzzleTypes.includes(type)) {
       if (draft.puzzleTypes.length === 1) return
       patch({ puzzleTypes: draft.puzzleTypes.filter(item => item !== type) })
@@ -73,11 +96,27 @@ const EditAlarm = ({ alarmId, folderId }: Props) => {
     }
   }
 
+  const changeDifficulty = (difficulty: Difficulty) => {
+    if (!pro && !isDifficultyFree(difficulty)) {
+      setPaywallReason('difficulty')
+      return
+    }
+    patch({ difficulty })
+  }
+
   const save = async () => {
+    if (!existing && !canCreateAlarm(settings.plan, alarms)) {
+      setPaywallReason('alarms')
+      return
+    }
+    if (draft.folderId && foldersAreLocked) {
+      setPaywallReason('folderLocked')
+      return
+    }
     await ensureNotificationPermission()
     const fullScreenGranted = await canUseFullScreenIntent()
     if (!fullScreenGranted) await openFullScreenIntentSettings()
-    upsertAlarm({ ...draft, oneShotAt: undefined, enabled: true })
+    upsertAlarm(clampAlarmForPlan({ ...draft, oneShotAt: undefined, enabled: true }, settings.plan))
     setScreen(returnScreen)
   }
 
@@ -148,29 +187,29 @@ const EditAlarm = ({ alarmId, folderId }: Props) => {
             values={draft.puzzleTypes}
             onToggle={togglePuzzleType}
             options={[
-              { value: 'colors', label: t.colors },
-              { value: 'symmetry', label: t.symmetry },
-              { value: 'symhex', label: t.symhex },
+              { value: 'colors', label: `${t.colors}${pro ? '' : ' · Pro'}` },
+              { value: 'symmetry', label: `${t.symmetry}${pro ? '' : ' · Pro'}` },
+              { value: 'symhex', label: `${t.symhex}${pro ? '' : ' · Pro'}` },
             ]}
           />
           <MultiSelect
             values={draft.puzzleTypes}
             onToggle={togglePuzzleType}
             options={[
-              { value: 'triangles', label: t.triangles },
-              { value: 'tetris', label: t.tetris },
-              { value: 'subtract', label: t.subtract },
+              { value: 'triangles', label: `${t.triangles}${pro ? '' : ' · Pro'}` },
+              { value: 'tetris', label: `${t.tetris}${pro ? '' : ' · Pro'}` },
+              { value: 'subtract', label: `${t.subtract}${pro ? '' : ' · Pro'}` },
             ]}
           />
           <span className="label-sm" style={{ marginTop: 6 }}>{t.difficulty}</span>
           <Segmented
             value={draft.difficulty}
-            onChange={difficulty => patch({ difficulty })}
+            onChange={changeDifficulty}
             options={[
               { value: 'easy', label: t.easy },
-              { value: 'medium', label: t.medium },
-              { value: 'hard', label: t.hard },
-              { value: 'expert', label: t.expert },
+              { value: 'medium', label: `${t.medium}${pro ? '' : ' · Pro'}` },
+              { value: 'hard', label: `${t.hard}${pro ? '' : ' · Pro'}` },
+              { value: 'expert', label: `${t.expert}${pro ? '' : ' · Pro'}` },
             ]}
           />
           <span className="label-sm" style={{ marginTop: 6 }}>{t.puzzleCount}</span>
@@ -292,6 +331,10 @@ const EditAlarm = ({ alarmId, folderId }: Props) => {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {paywallReason && <Paywall reason={paywallReason} onClose={() => setPaywallReason(null)} />}
+      </AnimatePresence>
     </ScreenShell>
   )
 }

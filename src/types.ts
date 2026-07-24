@@ -1,5 +1,6 @@
 // internal — absolute paths
 import type { PuzzleType, Difficulty } from '@/puzzle/types'
+import type { Plan } from '@/plan'
 
 // ===== CONFIGURATIONS =====
 const ALL_PUZZLE_TYPES: PuzzleType[] = ['maze', 'dots', 'squares', 'colors', 'symmetry', 'symhex', 'triangles', 'tetris', 'subtract']
@@ -44,6 +45,7 @@ export interface Settings {
   snoozeMinutes: number
   rampSeconds: number
   maxVolume: number
+  plan: Plan
 }
 
 export type Screen =
@@ -61,6 +63,7 @@ const defaultSettings: Settings = {
   snoozeMinutes: 5,
   rampSeconds: 45,
   maxVolume: 1,
+  plan: 'free',
 }
 
 const DefaultAlarmValues = {

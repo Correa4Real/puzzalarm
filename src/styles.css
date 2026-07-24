@@ -470,6 +470,79 @@ body {
   letter-spacing: 0.06em;
 }
 
+.folder-card.locked {
+  opacity: 0.48;
+  border-style: dashed;
+}
+
+.paywall-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(12, 10, 4, 0.62);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 18px;
+}
+
+.paywall-sheet {
+  width: min(100%, 420px);
+  background: linear-gradient(180deg, #fff8e4 0%, #f3e2b0 100%);
+  color: var(--ink);
+  border-radius: 28px 28px 22px 22px;
+  padding: 24px 22px 18px;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.paywall-eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  opacity: 0.55;
+}
+
+.paywall-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.paywall-reason {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.78;
+}
+
+.paywall-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.paywall-price {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.paywall-price span {
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.65;
+}
+
 /* ===== Ringtone list ===== */
 .ringtone-list {
   display: flex;
